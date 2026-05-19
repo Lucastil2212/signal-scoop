@@ -4,6 +4,9 @@ import android.content.Context
 import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
+import com.signalsoop.app.assistant.SignalContextBuilder
+import com.signalsoop.app.model.Finding
+import com.signalsoop.app.model.RiskSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -19,16 +22,18 @@ private const val TAG = "MpLlmInference"
  */
 class MpLlmInference {
     private var engine: LlmInference? = null
+    private var loadedPreset: LiteRtModelPreset = LiteRtModelPreset.DEFAULT
 
     fun isLoaded(): Boolean = engine != null
 
     fun load(context: Context, preset: LiteRtModelPreset, hintedPath: ModelDiskLocation?) {
         release()
+        loadedPreset = preset
         val file = resolveModelFile(context, preset, hintedPath)
         val inferenceOptions =
             LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(file.absolutePath)
-                .setMaxTokens(1024)
+                .setMaxTokens(preset.maxContextTokens)
                 .apply { preset.preferredBackend?.let { setPreferredBackend(it) } }
                 .build()
 
@@ -44,49 +49,104 @@ class MpLlmInference {
             }
     }
 
-    suspend fun generate(prompt: String): String =
+    suspend fun generateFromScan(
+        question: String,
+        findings: List<Finding>,
+        riskSummary: RiskSummary?,
+        analytics: com.signalsoop.app.assistant.ScanAnalytics,
+        taskHint: String = "Answer using only the scan facts. Be concise.",
+    ): String =
         withContext(Dispatchers.IO) {
             val llm = engine ?: error("Load a .task model before asking questions.")
+            val maxInputTokens =
+                loadedPreset.maxContextTokens - LiteRtModelPreset.DECODE_TOKEN_RESERVE
 
             val sessionOpts =
                 LlmInferenceSession.LlmInferenceSessionOptions.builder()
                     .setTemperature(0.35f)
-                    .setTopK(48)
+                    .setTopK(40)
                     .setTopP(0.9f)
                     .build()
 
             val session = LlmInferenceSession.createFromOptions(llm, sessionOpts)
             try {
+                val prompt =
+                    SignalContextBuilder.buildWithinTokenBudget(
+                        question = question,
+                        findings = findings,
+                        riskSummary = riskSummary,
+                        analytics = analytics,
+                        taskHint = taskHint,
+                        countTokens = session::sizeInTokens,
+                        maxInputTokens = maxInputTokens,
+                    )
+
+                Log.d(TAG, "Prompt tokens=${session.sizeInTokens(prompt)} budget=$maxInputTokens")
+
                 session.addQueryChunk(prompt)
-                suspendCancellableCoroutine { cont ->
-                    val finished = AtomicBoolean(false)
-                    val accumulator = StringBuilder()
-
-                    fun finishOnce() {
-                        if (finished.compareAndSet(false, true) && cont.isActive) {
-                            cont.resume(accumulator.toString())
-                        }
-                    }
-
-                    val future =
-                        session.generateResponseAsync { partialText, done ->
-                            if (!partialText.isNullOrEmpty()) accumulator.append(partialText)
-                            if (done) finishOnce()
-                        }
-
-                    cont.invokeOnCancellation {
-                        future.cancel(true)
-                        finished.set(true)
-                    }
-                }
+                runGenerate(session)
+            } catch (e: Throwable) {
+                throw mapInferenceError(e)
             } finally {
                 runCatching { session.close() }
+            }
+        }
+
+    private suspend fun runGenerate(session: LlmInferenceSession): String =
+        suspendCancellableCoroutine { cont ->
+            val finished = AtomicBoolean(false)
+            val accumulator = StringBuilder()
+
+            fun finishOnce() {
+                if (finished.compareAndSet(false, true) && cont.isActive) {
+                    cont.resume(accumulator.toString().ifBlank { "(No response generated.)" })
+                }
+            }
+
+            fun failOnce(t: Throwable) {
+                if (finished.compareAndSet(false, true) && cont.isActive) {
+                    cont.resumeWith(Result.failure(mapInferenceError(t)))
+                }
+            }
+
+            try {
+                val future =
+                    session.generateResponseAsync { partialText, done ->
+                        if (!partialText.isNullOrEmpty()) accumulator.append(partialText)
+                        if (done) finishOnce()
+                    }
+
+                cont.invokeOnCancellation {
+                    future.cancel(true)
+                    finished.set(true)
+                }
+            } catch (e: Exception) {
+                failOnce(e)
             }
         }
 
     fun release() {
         runCatching { engine?.close() }
         engine = null
+    }
+}
+
+private fun mapInferenceError(e: Throwable): Exception {
+    val msg = e.message.orEmpty()
+    return if (
+        msg.contains("OUT_OF_RANGE", ignoreCase = true) ||
+        msg.contains("Graph has errors", ignoreCase = true) ||
+        msg.contains("predict async", ignoreCase = true)
+    ) {
+        IllegalStateException(
+            "The scan was too large for this on-device model's context window. " +
+                "Try SmolLM-135M, ask a shorter question, or scan again with fewer nearby devices visible.",
+            e,
+        )
+    } else if (e is Exception) {
+        e
+    } else {
+        Exception(e)
     }
 }
 

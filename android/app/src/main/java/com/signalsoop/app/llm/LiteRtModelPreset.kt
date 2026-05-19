@@ -15,6 +15,7 @@ enum class LiteRtModelPreset(
     val approxMb: Int,
     val recommendedRamMb: Int,
     val preferredBackend: LlmInference.Backend?,
+    val maxContextTokens: Int,
     val notes: String,
 ) {
     SMOLLM_CPU(
@@ -26,6 +27,7 @@ enum class LiteRtModelPreset(
         approxMb = 250,
         recommendedRamMb = 3,
         preferredBackend = LlmInference.Backend.CPU,
+        maxContextTokens = 1280,
         notes = "Best for 3 GiB-class RAM devices.",
     ),
     QWEN2_5_05B_CPU(
@@ -37,6 +39,7 @@ enum class LiteRtModelPreset(
         approxMb = 420,
         recommendedRamMb = 4,
         preferredBackend = LlmInference.Backend.CPU,
+        maxContextTokens = 1280,
         notes = "Default balance of quality and compatibility.",
     ),
     GEMMA3_1B_GPU(
@@ -48,6 +51,7 @@ enum class LiteRtModelPreset(
         approxMb = 900,
         recommendedRamMb = 6,
         preferredBackend = LlmInference.Backend.GPU,
+        maxContextTokens = 2048,
         notes = "Requires Hugging Face token for download.",
     ),
     ;
@@ -58,6 +62,9 @@ enum class LiteRtModelPreset(
 
     companion object {
         val DEFAULT: LiteRtModelPreset = QWEN2_5_05B_CPU
+
+        /** Tokens reserved for the model's reply (see MediaPipe LLM inference samples). */
+        const val DECODE_TOKEN_RESERVE = 280
 
         fun fromOrdinal(i: Int): LiteRtModelPreset {
             val vals = entries.toTypedArray()
