@@ -12,3 +12,5 @@ val ScoopWhite = Color(0xFFF5F7FA)
 val ScoopMuted = Color(0xFF9AA3B2)
 val ScoopWarning = Color(0xFFFFB020)
 val ScoopDanger = Color(0xFFFF4D6D)
+/** Technical values in chat (MAC, labels). */
+val ScoopTech = Color(0xFF7AE7FF)

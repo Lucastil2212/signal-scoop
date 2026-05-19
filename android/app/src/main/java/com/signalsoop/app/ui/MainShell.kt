@@ -55,7 +55,11 @@ fun MainShell(
                                 contentDescription = dest.label,
                             )
                         },
-                        label = { Text(dest.label, color = if (tab == dest) ScoopGreen else ScoopMuted) },
+                        label = {
+                            val label =
+                                if (dest == MainTab.Ask) "${dest.label} β" else dest.label
+                            Text(label, color = if (tab == dest) ScoopGreen else ScoopMuted)
+                        },
                     )
                 }
             }

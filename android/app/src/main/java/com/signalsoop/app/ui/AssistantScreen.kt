@@ -46,6 +46,8 @@ import com.signalsoop.app.ScanUiState
 import com.signalsoop.app.assistant.AssistantViewModel
 import com.signalsoop.app.assistant.ChatMessage
 import com.signalsoop.app.llm.LiteRtModelPreset
+import com.signalsoop.app.ui.components.AssistantBetaBanner
+import com.signalsoop.app.ui.components.ChatRichText
 import com.signalsoop.app.ui.theme.ScoopBlack
 import com.signalsoop.app.ui.theme.ScoopBlue
 import com.signalsoop.app.ui.theme.ScoopGreen
@@ -67,6 +69,13 @@ fun AssistantScreen(
     var presetExpanded by remember { mutableStateOf(false) }
     var showModelPick by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val versionLabel =
+        remember {
+            @Suppress("DEPRECATION")
+            val name =
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName
+            "Signal Scoop $name"
+        }
 
     fun importPickedUri(uri: Uri) {
         val name =
@@ -132,9 +141,11 @@ fun AssistantScreen(
             style = MaterialTheme.typography.titleLarge,
             color = ScoopWhite,
         )
+        AssistantBetaBanner(versionLabel = versionLabel)
+
         Text(
-            "Answers use only this session's scan data and an on-device model. " +
-                "Optional HTTPS download fetches the checkpoint once; scan results are never uploaded.",
+            "Summaries and common questions use your scan data directly (no model needed). " +
+                "Open-ended questions use an optional on-device model. Scan data is never uploaded.",
             style = MaterialTheme.typography.bodySmall,
             color = ScoopMuted,
         )
@@ -268,7 +279,11 @@ private fun ChatBubble(message: ChatMessage) {
                     style = MaterialTheme.typography.labelMedium,
                     color = if (message.fromUser) ScoopBlue else ScoopGreen,
                 )
-                Text(message.text, color = ScoopWhite, style = MaterialTheme.typography.bodyMedium)
+                if (message.fromUser) {
+                    Text(message.text, color = ScoopWhite, style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    ChatRichText(text = message.text)
+                }
             }
         }
     }
@@ -276,8 +291,8 @@ private fun ChatBubble(message: ChatMessage) {
 
 private fun suggestedPrompts(scanState: ScanUiState): String {
     return if (scanState.findings.isEmpty()) {
-        "Run Scan first, then try:\n• Which BLE devices look unknown?\n• Summarize Wi-Fi networks with strong signal.\n• What does the risk score mean?"
+        "Run Scan first, then try:\n• Summarize the scan\n• Analyze risk\n• How many BLE devices?\n• List unknown BLE"
     } else {
-        "Try:\n• Summarize the highest-risk findings.\n• List unknown BLE devices.\n• Explain the risk score in plain language."
+        "Try:\n• Summarize the scan\n• Analyze risk and concerns\n• How many Wi-Fi networks?\n• List strongest signals\n• List hidden Wi-Fi"
     }
 }
