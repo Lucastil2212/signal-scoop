@@ -14,7 +14,9 @@ Signal Scoop is designed as a **local, read-only radio survey** on your own phon
 ## Out of scope (what we never do)
 
 - No user accounts, analytics SDKs, ads, or crash reporters that phone home.
-- No `INTERNET` permission; release builds block cleartext via `networkSecurityConfig`.
+- No scan data transmitted over the network. The **Ask** tab runs a **local** LiteRT/MediaPipe model on your phone.
+- `INTERNET` is used **only** when you explicitly download a `.task` model checkpoint (HTTPS). You can instead import a model via **Pick model** with no download.
+- Release builds block cleartext via `networkSecurityConfig`.
 - No connecting to, pairing with, or deauthenticating remote devices.
 - No exploitation, fingerprinting of private devices beyond what the OS exposes to apps, or bypassing Android security controls.
 - No background scanning; scans stop when you leave the app.

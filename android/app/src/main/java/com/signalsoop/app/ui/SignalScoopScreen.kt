@@ -59,6 +59,8 @@ fun SignalScoopScreen(
     viewModel: ScanViewModel,
     onScanClick: () -> Unit,
     onRequestPermissions: () -> Unit,
+    modifier: Modifier = Modifier,
+    showBottomScanBar: Boolean = true,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val filtered = if (uiState.selectedCategory == SignalCategory.ALL) {
@@ -68,6 +70,7 @@ fun SignalScoopScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         containerColor = ScoopBlack,
         topBar = {
             TopAppBar(
@@ -85,12 +88,14 @@ fun SignalScoopScreen(
             )
         },
         bottomBar = {
-            ScanBottomBar(
-                uiState = uiState,
-                onScanClick = {
-                    if (uiState.permissionNeeded) onRequestPermissions() else onScanClick()
-                },
-            )
+            if (showBottomScanBar) {
+                ScanBottomBar(
+                    uiState = uiState,
+                    onScanClick = {
+                        if (uiState.permissionNeeded) onRequestPermissions() else onScanClick()
+                    },
+                )
+            }
         },
     ) { padding ->
         LazyColumn(
@@ -150,7 +155,55 @@ fun SignalScoopScreen(
                 FindingCard(finding = finding)
             }
 
-            item { Spacer(Modifier.height(88.dp)) }
+            if (!showBottomScanBar) {
+                item {
+                    ScanActionButton(
+                        uiState = uiState,
+                        onScanClick = {
+                            if (uiState.permissionNeeded) onRequestPermissions() else onScanClick()
+                        },
+                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+                    )
+                }
+            } else {
+                item { Spacer(Modifier.height(88.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScanActionButton(
+    uiState: ScanUiState,
+    onScanClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onScanClick,
+        enabled = !uiState.isScanning,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(56.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = ScoopGreen,
+            contentColor = ScoopBlack,
+            disabledContainerColor = ScoopGreen.copy(alpha = 0.35f),
+        ),
+    ) {
+        if (uiState.isScanning) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                color = ScoopBlack,
+                strokeWidth = 2.dp,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Scanning…")
+        } else {
+            Text(
+                if (uiState.permissionNeeded) "Grant permissions & scan" else "Scan nearby signals",
+                style = MaterialTheme.typography.labelLarge,
+            )
         }
     }
 }
@@ -254,32 +307,6 @@ private fun ScanBottomBar(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Button(
-            onClick = onScanClick,
-            enabled = !uiState.isScanning,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ScoopGreen,
-                contentColor = ScoopBlack,
-                disabledContainerColor = ScoopGreen.copy(alpha = 0.35f),
-            ),
-        ) {
-            if (uiState.isScanning) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = ScoopBlack,
-                    strokeWidth = 2.dp,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Scanning…")
-            } else {
-                Text(
-                    if (uiState.permissionNeeded) "Grant permissions & scan" else "Scan nearby signals",
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        }
+        ScanActionButton(uiState = uiState, onScanClick = onScanClick)
     }
 }

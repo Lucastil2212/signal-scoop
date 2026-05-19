@@ -13,3 +13,11 @@
     public static int d(...);
     public static int i(...);
 }
+
+# On-device MediaPipe LiteRT (from cil-graph android client)
+-keep class com.signalsoop.app.llm.** { *; }
+-dontwarn com.google.mediapipe.**
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}

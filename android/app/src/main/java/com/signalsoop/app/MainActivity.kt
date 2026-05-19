@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.signalsoop.app.scan.ScanPermissions
-import com.signalsoop.app.ui.SignalScoopScreen
+import com.signalsoop.app.ui.MainShell
 import com.signalsoop.app.ui.theme.SignalScoopTheme
 import com.signalsoop.app.ui.theme.ScoopBlack
 
@@ -43,8 +43,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = ScoopBlack,
                 ) {
-                    SignalScoopScreen(
-                        viewModel = viewModel,
+                    MainShell(
+                        scanViewModel = viewModel,
                         onScanClick = { viewModel.startScan() },
                         onRequestPermissions = { requestPermissionsThenScan() },
                     )

@@ -12,7 +12,9 @@ object ScanPolicy {
     const val MAX_WIFI_WAIT_MS = 12_000L
 
     val privacyBullets = listOf(
-        "No accounts, servers, or internet access in this app.",
+        "No accounts or cloud analytics. Scan results never leave your phone.",
+        "Optional HTTPS download only fetches a local LLM checkpoint (.task) when you tap Download.",
+        "Ask uses an on-device model; answers are grounded in your current scan session only.",
         "Scans run only when you tap Scan, in the foreground.",
         "Results stay in memory and are cleared when you leave the app.",
         "We do not connect to, pair with, or attack nearby devices.",
