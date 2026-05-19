@@ -99,7 +99,8 @@ Copy or rename it as needed. For Play Store distribution you would sign with you
 signal-scoop/
 ├── android/                 # Kotlin + Jetpack Compose app
 ├── release/                 # Shipped APK for sideloading
-├── LICENSE                  # MIT
+├── LICENSE                  # MIT (Manticore Technologies, LLC)
+├── NOTICE.md                # Copyright and attribution
 ├── seed.md                  # Original MVP notes
 ├── SIGNAL SCOOP LOGO.png    # Brand asset
 └── .beads/                  # Task tracking (Beads)
@@ -119,7 +120,9 @@ Run `bd prime` in the project root for workflow context.
 
 ## License
 
-[MIT](LICENSE) — Copyright (c) 2026 Signal Scoop Contributors.
+Copyright © 2026 **Manticore Technologies, LLC**. All rights reserved.
+
+Signal Scoop is released under the [MIT License](LICENSE). Redistributions must retain the copyright notice and license text.
 
 ## Security & privacy
 

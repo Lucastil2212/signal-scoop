@@ -43,6 +43,10 @@ Tools
 
 bluetooth scanner, wifi scanner, ble scanner, network scanner, privacy, security tool
 
+## Developer / legal name
+
+Manticore Technologies, LLC
+
 ## Contact email
 
 YOUR_EMAIL@example.com

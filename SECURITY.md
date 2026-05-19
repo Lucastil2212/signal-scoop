@@ -1,5 +1,8 @@
 # Security policy
 
+**Publisher:** Manticore Technologies, LLC  
+**Product:** Signal Scoop
+
 Signal Scoop is designed as a **local, read-only radio survey** on your own phone. This document describes how we handle permissions, data, and threat boundaries.
 
 ## Scope (what we do)

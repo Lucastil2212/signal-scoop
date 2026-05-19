@@ -1,8 +1,9 @@
 # Privacy Policy — Signal Scoop
 
 **Last updated:** May 19, 2026  
+**Publisher:** Manticore Technologies, LLC  
 **App:** Signal Scoop (`com.signalsoop.app`)  
-**Contact:** Replace with your support email before publishing (e.g. `support@yourdomain.com`).
+**Contact:** Replace with your support email before publishing (e.g. `support@manticoretechnologies.com`).
 
 ## Summary
 

@@ -79,6 +79,8 @@ fun SecurityInfoCard(modifier: Modifier = Modifier) {
                 ScanPolicy.permissionBullets.forEach { bullet ->
                     Bullet(bullet)
                 }
+                SectionTitle("License")
+                Bullet(ScanPolicy.LICENSE_NOTICE)
             }
         }
     }
