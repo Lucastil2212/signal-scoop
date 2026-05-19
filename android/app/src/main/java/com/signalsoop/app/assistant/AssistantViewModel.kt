@@ -38,7 +38,7 @@ data class AssistantUiState(
     val userInput: String = "",
     val isGenerating: Boolean = false,
     val hfToken: String = "",
-    val statusLine: String = "Load a .task model to ask questions about your scan.",
+    val statusLine: String = "Summarize & analyze work without a model. Load .task for open-ended questions.",
     val modelsFolderPath: String = "",
     val localModelOptions: List<LocalModelOption> = emptyList(),
 )
@@ -231,19 +231,18 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
                 if (scanState.findings.isEmpty()) {
                     error("Run a scan first so the assistant has signal data to reference.")
                 }
-                ensureModelLoaded(_uiState.value.preset)
-                val prompt =
-                    SignalContextBuilder.buildPrompt(
+                val response =
+                    app.scanAssistant.respond(
                         question = question,
                         findings = scanState.findings,
                         riskSummary = scanState.riskSummary,
                     )
-                app.llm.generate(prompt)
-            }.onSuccess { answer ->
+                response
+            }.onSuccess { response ->
                 _uiState.update {
                     it.copy(
-                        messages = it.messages + ChatMessage(fromUser = false, text = answer),
-                        modelReady = true,
+                        messages = it.messages + ChatMessage(fromUser = false, text = response.text),
+                        modelReady = app.llm.isLoaded(),
                         isGenerating = false,
                     )
                 }
