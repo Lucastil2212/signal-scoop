@@ -1,5 +1,26 @@
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+!android/local.properties.example
+android/keystore.properties
+release/*.jks
+release/*.keystore
+*.iml
+.idea/
+.cxx/
+captures/
+.externalNativeBuild/
 
-# Beads / Dolt files (added by bd init)
-.dolt/
-*.db
-.beads-credential-key
+# Beads local state (issues.jsonl is tracked)
+.beads/embeddeddolt/
+.beads/*.db
+.beads/daemon.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Release artifacts (APK copied to release/ is tracked intentionally)
+# Uncomment to ignore APKs: release/*.apk

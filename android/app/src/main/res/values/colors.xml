@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="scoop_black">#FF0A0A0F</color>
+    <color name="scoop_blue">#FF00AEEF</color>
+    <color name="scoop_green">#FF39FF14</color>
+    <color name="scoop_white">#FFF5F7FA</color>
+</resources>
