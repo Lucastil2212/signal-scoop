@@ -34,6 +34,16 @@ Each scan is **saved on-device** with a timestamp and a **native GPS fix** (when
 
 **EVRUS / EVRMORE** — local connector stores identity and P2P refs; optional handoff to an installed EVRUS companion app; graph anchoring stays on-device.
 
+### Connect (local mesh)
+
+The **Connect** tab is an iPhone-style home screen for device-to-device comms over **local radio** (Wi-Fi NSD + TCP mesh, BLE discovery via scan links):
+
+- **Messages** — EVRUS-compatible **X3DH + Double Ratchet** (ChaCha20-Poly1305) text only; inbox exportable as `.txt`
+- **Voice mesh** — realtime PCM frames over the same local mesh (LoRa-style, no cloud)
+- **Mesh radio** — discover peers on the same LAN and open an encrypted session
+
+Crypto and wire format align with [evrus-v0](https://github.com/contextgraph/cil-graph) `packages/messaging`; transport follows the peer-weave actor-plane pattern (local streams, no internet relay).
+
 Published by **Manticore Technologies, LLC**.
 
 ### Risk summary
