@@ -27,6 +27,7 @@ class ScanHistoryRepository(
         riskSummary: RiskSummary?,
         geoFix: ScanGeoFix?,
         name: String? = null,
+        sessionContext: com.signalsoop.app.model.ScanSessionContext? = null,
     ): ScanSnapshot {
         val scannedAt = geoFix?.capturedAtEpochMs ?: System.currentTimeMillis()
         val id = UUID.randomUUID().toString()
@@ -41,6 +42,7 @@ class ScanHistoryRepository(
                 geoFix = geoFix,
                 findings = findings,
                 riskSummary = riskSummary,
+                sessionContext = sessionContext,
             )
 
         val priorCounts = priorSignalObservationCounts(excludeScanId = null)
@@ -329,6 +331,7 @@ class ScanHistoryRepository(
             riskHighlightsJson =
                 ScanSnapshotCodec.encodeRiskHighlights(riskSummary?.highlights.orEmpty()),
             placeKey = geoFix?.let { KnowledgeGraphBuilder.placeKeyFor(it.latitude, it.longitude) },
+            sessionContextJson = ScanSnapshotCodec.encodeSessionContext(sessionContext),
         )
 
     private fun SavedScanEntity.toSnapshot(): ScanSnapshot =
@@ -356,5 +359,6 @@ class ScanHistoryRepository(
                     riskLevel,
                     riskHighlightsJson,
                 ),
+            sessionContext = ScanSnapshotCodec.decodeSessionContext(sessionContextJson),
         )
 }

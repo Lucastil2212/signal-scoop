@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -33,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.signalsoop.app.HistoryViewModel
+import com.signalsoop.app.history.KnowledgeGraphBuilder
+import com.signalsoop.app.history.ScanFindingCounts
 import com.signalsoop.app.history.ScanSnapshot
 import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.SignalCategory
@@ -61,16 +62,14 @@ fun ScanDetailSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var categoryFilter by remember(scanId) { mutableStateOf(SignalCategory.ALL) }
 
-    val allRadio = remember(snapshot) { viewModel.radioFindingsForScan(scanId) }
+    val counts = remember(snapshot) { ScanFindingCounts.from(snapshot.findings) }
+    val allFindings = remember(snapshot) { KnowledgeGraphBuilder.displayableFindings(snapshot.findings) }
     val filtered =
         if (categoryFilter == SignalCategory.ALL) {
-            allRadio
+            allFindings
         } else {
-            allRadio.filter { it.category == categoryFilter }
+            allFindings.filter { it.category == categoryFilter }
         }
-    val bleCount = allRadio.count { it.category == SignalCategory.BLE }
-    val wifiCount = allRadio.count { it.category == SignalCategory.WIFI }
-    val btCount = allRadio.count { it.category == SignalCategory.BLUETOOTH }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -101,13 +100,13 @@ fun ScanDetailSheet(
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(snapshot.name, color = ScoopWhite, style = MaterialTheme.typography.titleLarge)
                     Text(
-                        "Saved scan session — everything detected in this run",
+                        "Saved scan — same categories as a live scan (BLE, Wi-Fi, Bluetooth, NFC, sensors)",
                         color = ScoopMuted,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
-            item { ScanDetailSummary(snapshot, bleCount, wifiCount, btCount) }
+            item { ScanDetailSummary(snapshot, counts) }
             snapshot.riskSummary?.let { risk ->
                 item { RiskCard(summary = risk) }
             }
@@ -124,19 +123,16 @@ fun ScanDetailSheet(
             item {
                 ScanCategoryFilters(
                     selected = categoryFilter,
-                    bleCount = bleCount,
-                    wifiCount = wifiCount,
-                    btCount = btCount,
-                    total = allRadio.size,
+                    counts = counts,
                     onSelect = { categoryFilter = it },
                 )
             }
             item {
                 Text(
                     if (categoryFilter == SignalCategory.ALL) {
-                        "All radio signals (${filtered.size})"
+                        "All signals (${filtered.size})"
                     } else {
-                        "${categoryFilter.label} (${filtered.size} of ${allRadio.size})"
+                        "${categoryFilter.label} (${filtered.size} of ${counts.total})"
                     },
                     color = ScoopWhite,
                     style = MaterialTheme.typography.titleSmall,
@@ -145,7 +141,7 @@ fun ScanDetailSheet(
             if (filtered.isEmpty()) {
                 item {
                     Text(
-                        "No ${categoryFilter.label.lowercase()} signals in this scan. Try another filter or run a new scan on the Scan tab.",
+                        "No ${categoryFilter.label.lowercase()} in this scan. Try another filter.",
                         color = ScoopMuted,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -178,9 +174,7 @@ fun ScanDetailSheet(
 @Composable
 private fun ScanDetailSummary(
     snapshot: ScanSnapshot,
-    bleCount: Int,
-    wifiCount: Int,
-    btCount: Int,
+    counts: ScanFindingCounts,
 ) {
     val time = SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.getDefault()).format(Date(snapshot.scannedAtEpochMs))
     Surface(color = ScoopSurfaceHigh, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -198,7 +192,7 @@ private fun ScanDetailSummary(
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
-                "Detected: $bleCount BLE · $wifiCount Wi-Fi · $btCount Bluetooth",
+                "Detected: ${counts.summaryLine()}",
                 color = ScoopWhite,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -209,19 +203,18 @@ private fun ScanDetailSummary(
 @Composable
 private fun ScanCategoryFilters(
     selected: SignalCategory,
-    bleCount: Int,
-    wifiCount: Int,
-    btCount: Int,
-    total: Int,
+    counts: ScanFindingCounts,
     onSelect: (SignalCategory) -> Unit,
 ) {
     val scroll = rememberScrollState()
     val chips =
         listOf(
-            SignalCategory.ALL to "All ($total)",
-            SignalCategory.BLE to "BLE ($bleCount)",
-            SignalCategory.WIFI to "Wi-Fi ($wifiCount)",
-            SignalCategory.BLUETOOTH to "Bluetooth ($btCount)",
+            SignalCategory.ALL to "All (${counts.total})",
+            SignalCategory.BLE to "BLE (${counts.ble})",
+            SignalCategory.WIFI to "Wi-Fi (${counts.wifi})",
+            SignalCategory.BLUETOOTH to "Bluetooth (${counts.bluetooth})",
+            SignalCategory.NFC to "NFC (${counts.nfc})",
+            SignalCategory.SENSORS to "Sensors (${counts.sensors})",
         )
     Row(
         modifier =
@@ -255,21 +248,11 @@ private fun ScanSignalRow(
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         FindingCard(finding = finding)
         if (petName != null) {
-            Text(
-                "Your name for this signal: $petName",
-                color = ScoopGreen,
-                style = MaterialTheme.typography.bodySmall,
-            )
+            Text("Pet name: $petName", color = ScoopGreen, style = MaterialTheme.typography.bodySmall)
         }
-        TextButton(onClick = onName) {
-            Text("Give this signal a friendly name", color = ScoopGreen)
-        }
+        TextButton(onClick = onName) { Text("Name signal", color = ScoopGreen) }
     }
 }
 
 private fun scanSignalKey(finding: Finding): String? =
-    when {
-        finding.id.startsWith("ble-") -> finding.id.removePrefix("ble-")
-        finding.id.startsWith("wifi-") -> finding.id.removePrefix("wifi-")
-        else -> finding.id.takeIf { finding.category == SignalCategory.BLUETOOTH }
-    }
+    KnowledgeGraphBuilder.graphSignalKeyFrom(finding)

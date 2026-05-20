@@ -223,11 +223,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.nodeDetailItems(
     when {
         scanId != null -> {
             val snapshot = viewModel.snapshotForScan(scanId)
-            val count = viewModel.radioFindingsForScan(scanId).size
+            val count = viewModel.findingsForScan(scanId).size
             item { ScanSummaryBlock(snapshot) }
             item {
                 Text(
-                    "This dot is a saved scan session on the map. Open it to browse every BLE, Wi-Fi, and Bluetooth signal detected in that run.",
+                    "This dot is a saved scan session on the map. Open it to browse every signal from that run (BLE, Wi-Fi, Bluetooth, NFC, sensors).",
                     color = ScoopMuted,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -262,7 +262,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.nodeDetailItems(
                 }
             }
             val findings = viewModel.findingsForSignalKey(signalKey)
-            items(findings.take(20), key = { "${it.id}-${it.detail.hashCode()}" }) { finding ->
+            items(findings, key = { "${it.id}-${it.detail.hashCode()}" }) { finding ->
                 SignalDetailBlock(
                     finding = finding,
                     petName = viewModel.aliasForKey(signalKey, uiState.vault),

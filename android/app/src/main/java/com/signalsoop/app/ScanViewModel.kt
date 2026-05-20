@@ -89,10 +89,11 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                         gpsCapture.capture()
                     }
 
-                val results =
+                val scanRun =
                     coordinator.runFullScan { message ->
                         _uiState.update { state -> state.copy(statusMessage = message) }
                     }
+                val results = scanRun.findings
                 val geoFix = locationJob.await()
                 val filtered = results.filter { it.category != SignalCategory.SYSTEM }
                 val risk = RiskScorer.summarize(filtered)
@@ -102,6 +103,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                         findings = results,
                         riskSummary = risk,
                         geoFix = geoFix,
+                        sessionContext = scanRun.sessionContext,
                     )
                 val status =
                     buildString {

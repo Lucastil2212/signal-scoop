@@ -5,14 +5,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.location.LocationManager
 import android.net.wifi.WifiManager
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import com.signalsoop.app.model.Finding
+import com.signalsoop.app.model.FindingExtras
 import com.signalsoop.app.model.SignalCategory
 import com.signalsoop.app.security.PermissionGuard
 import com.signalsoop.app.security.ScanPolicy
-import android.location.LocationManager
-import android.provider.Settings
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
@@ -57,6 +58,10 @@ class WifiScanner(private val context: Context) {
                 ),
             )
         }
+
+        val connectedBssid =
+            runCatching { wifiManager.connectionInfo?.bssid?.takeIf { it != "02:00:00:00:00:00" } }
+                .getOrNull()
 
         val results = withTimeoutOrNull(timeoutMs) {
             suspendCancellableCoroutine { cont ->
@@ -109,6 +114,11 @@ class WifiScanner(private val context: Context) {
                 ap.level > -65 -> 5
                 else -> 2
             }
+            val freq = ap.frequency
+            val channel = WifiScanUtil.channelFromFrequencyMhz(freq)
+            val isConnected =
+                connectedBssid != null &&
+                    ap.BSSID.equals(connectedBssid, ignoreCase = true)
 
             Finding(
                 id = "wifi-${ap.BSSID}",
@@ -117,6 +127,13 @@ class WifiScanner(private val context: Context) {
                 detail = "${ap.BSSID} · ${ap.level} dBm · ${ap.capabilities}",
                 signalStrength = ap.level,
                 riskPoints = risk,
+                extras =
+                    FindingExtras(
+                        frequencyMhz = freq,
+                        wifiChannel = channel,
+                        wifiBand = WifiScanUtil.bandLabel(freq),
+                        isConnectedAp = isConnected,
+                    ),
             )
         }.sortedByDescending { it.signalStrength ?: Int.MIN_VALUE }
     }

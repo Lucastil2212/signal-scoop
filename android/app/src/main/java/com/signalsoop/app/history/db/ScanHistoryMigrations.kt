@@ -122,4 +122,13 @@ object ScanHistoryMigrations {
                 )
             }
         }
+
+    val MIGRATION_3_4 =
+        object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE saved_scans ADD COLUMN session_context_json TEXT",
+                )
+            }
+        }
 }

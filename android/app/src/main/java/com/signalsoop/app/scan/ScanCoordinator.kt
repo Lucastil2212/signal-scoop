@@ -16,15 +16,21 @@ class ScanCoordinator(context: Context) {
     private val bleScanner = BleScanner(appContext)
     private val wifiScanner = WifiScanner(appContext)
 
-    suspend fun runFullScan(onProgress: (String) -> Unit): List<Finding> = coroutineScope {
+    suspend fun runFullScan(onProgress: (String) -> Unit): ScanRunResult = coroutineScope {
+        val startedAt = System.currentTimeMillis()
         if (!PermissionGuard.hasAllRequired(appContext)) {
-            return@coroutineScope listOf(
-                Finding(
-                    id = "permissions-missing",
-                    category = SignalCategory.SYSTEM,
-                    title = "Permissions not granted",
-                    detail = "Grant all requested permissions, then run Scan again.",
-                ),
+            val ctx = ScanSessionContextCollector.collect(appContext, 0L)
+            return@coroutineScope ScanRunResult(
+                findings =
+                    listOf(
+                        Finding(
+                            id = "permissions-missing",
+                            category = SignalCategory.SYSTEM,
+                            title = "Permissions not granted",
+                            detail = "Grant all requested permissions, then run Scan again.",
+                        ),
+                    ),
+                sessionContext = ctx,
             )
         }
 
@@ -50,13 +56,18 @@ class ScanCoordinator(context: Context) {
         onProgress("Finalizing results…")
         delay(200)
 
+        val durationMs = System.currentTimeMillis() - startedAt
+        val sessionContext = ScanSessionContextCollector.collect(appContext, durationMs)
+
         findings += Finding(
             id = "scan-complete",
             category = SignalCategory.SYSTEM,
             title = "Scan complete",
-            detail = "Found ${findings.size} items across local radios and sensors.",
+            detail =
+                "Found ${findings.size} items across local radios and sensors · " +
+                    sessionContext.formatOneLiner(),
         )
 
-        findings
+        ScanRunResult(findings = findings, sessionContext = sessionContext)
     }
 }

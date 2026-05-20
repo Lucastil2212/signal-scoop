@@ -717,13 +717,7 @@ private fun ScanHistoryCard(
     val time = SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.getDefault()).format(Date(snapshot.scannedAtEpochMs))
     val geoLine = snapshot.geoFix?.let { "GPS ${it.formatCoordinates()} · ${it.formatAccuracy()}" }
     val riskLine = snapshot.riskSummary?.let { "${it.level.label} ${it.score}/100" }
-    val radio =
-        snapshot.findings.filter {
-            it.category != SignalCategory.SYSTEM && it.category != SignalCategory.SENSORS
-        }
-    val ble = radio.count { it.category == SignalCategory.BLE }
-    val wifi = radio.count { it.category == SignalCategory.WIFI }
-    val bt = radio.count { it.category == SignalCategory.BLUETOOTH }
+    val counts = com.signalsoop.app.history.ScanFindingCounts.from(snapshot.findings)
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = ScoopSurfaceHigh,
@@ -743,7 +737,7 @@ private fun ScanHistoryCard(
                 Icon(Icons.Rounded.ChevronRight, contentDescription = "View signals", tint = ScoopGreen)
             }
             Text(
-                "Tap to view · $ble BLE · $wifi Wi-Fi · $bt Bluetooth",
+                "Tap to view · ${counts.summaryLine()}",
                 color = ScoopGreen,
                 style = MaterialTheme.typography.labelMedium,
             )
@@ -783,7 +777,7 @@ private fun ScanHistoryCard(
                                 append(time)
                                 geoLine?.let { line -> append('\n').append(line) }
                                 riskLine?.let { line -> append("\nRisk: ").append(line) }
-                                append("\nSignals: $ble BLE, $wifi Wi-Fi, $bt Bluetooth")
+                                append("\nSignals: ${counts.summaryLine()}")
                             },
                     )
                     IconButton(onClick = onDelete) {

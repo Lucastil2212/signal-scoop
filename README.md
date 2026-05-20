@@ -6,17 +6,18 @@
   <img src="SIGNAL%20SCOOP%20LOGO.png" alt="Signal Scoop logo" width="220" />
 </p>
 
-**Current release:** `1.6.2-beta` (versionCode 10)
+**Current release:** `1.7.0-beta` (versionCode 11)
 
 ## What it detects
 
 | Source | What you see |
 |--------|----------------|
-| **BLE scan** | Nearby BLE devices (earbuds, trackers, IoT, beacons) with RSSI |
-| **Wi-Fi scan** | Nearby access points / hotspots (SSID, BSSID, signal, security) |
-| **Paired Bluetooth** | Devices already bonded with your phone |
-| **Sensors** | Magnetometer, accelerometer, and other hardware exposed to apps |
+| **BLE scan** | MAC, name, RSSI, manufacturer ID, service UUIDs, TX power, connectable flag, advertisement bytes |
+| **Wi-Fi scan** | SSID, BSSID, RSSI, channel/band, connected-AP flag, security capabilities |
+| **Paired Bluetooth** | Bond state, device class, link type |
+| **Sensors** | Vendor, type, resolution, range, min delay, power draw |
 | **NFC** | Whether NFC hardware exists and is enabled |
+| **Session** | Device model, Android version, scan duration, permissions, radio/VPN flags |
 | **Ask** | Natural-language Q&A over the current scan (on-device LLM) |
 | **Knowledge** | Saved scans, local graph map, vault (aliases, media, notes) |
 

@@ -127,10 +127,12 @@ object GraphVisualizationBuilder {
                     val epoch = scanId?.let { scanEpochById[it] }
                     val rssi = meta?.optInt("rssi")?.takeIf { it != 0 }
                     val detail = meta?.optString("detail")?.takeIf { it.isNotBlank() }
+                    val extrasSummary = meta?.optString("extrasSummary")?.takeIf { it.isNotBlank() }
                     val subtitle =
                         buildList {
                             rssi?.let { add("$it dBm") }
                             detail?.let { add(it.take(48)) }
+                            extrasSummary?.let { add(it.take(40)) }
                             epoch?.let { add(formatTime(it)) }
                         }.joinToString(" · ")
                     visNodes +=
@@ -302,6 +304,7 @@ object GraphVisualizationBuilder {
                     lon = node?.lon ?: scanGpsById[scanId]?.second,
                     color = node?.color ?: GraphColorPalette.scanColor(0, 1),
                     signalCount = signalsPerScan[scanId] ?: 0,
+                    signalSummary = signalSummaryForScan(scanId, nodes, edges),
                 )
             }
 
@@ -503,17 +506,77 @@ object GraphVisualizationBuilder {
                     }
                 }
             }
-        var signalRound = 0
-        edges
-            .filter { it.relation == KnowledgeGraphBuilder.REL_OBSERVED }
-            .forEach { edge ->
+        val nodeById = nodes.associateBy { it.id }
+        val observedByScan =
+            edges
+                .filter { it.relation == KnowledgeGraphBuilder.REL_OBSERVED }
+                .groupBy { it.scanId }
+        observedByScan.forEach { (_, scanEdges) ->
+            val counters = mutableMapOf<String, Int>()
+            scanEdges.forEach { edge ->
                 val scanCoord = coords[edge.fromNodeId] ?: return@forEach
                 if (coords[edge.toNodeId] != null) return@forEach
-                val offset = offsetDegrees(signalRound++, 0.00012)
+                val category =
+                    nodeById[edge.toNodeId]?.metadataJson?.let { meta ->
+                        runCatching { org.json.JSONObject(meta).optString("category") }.getOrNull()
+                    }.orEmpty()
+                val idx = counters.getOrDefault(category, 0)
+                counters[category] = idx + 1
+                val offset = signalOffsetDegrees(category, idx)
                 coords[edge.toNodeId] =
                     Pair(scanCoord.first + offset.first, scanCoord.second + offset.second)
             }
+        }
         return coords
+    }
+
+    private fun signalOffsetDegrees(category: String, index: Int): Pair<Double, Double> {
+        val baseAngle =
+            when (category.uppercase()) {
+                "SENSORS" -> 0.0
+                "NFC" -> 1.2
+                "BLUETOOTH" -> 2.4
+                "WIFI" -> 3.6
+                "BLE" -> 4.8
+                else -> 0.6
+            }
+        val radius =
+            when (category.uppercase()) {
+                "SENSORS" -> 0.00042
+                "NFC" -> 0.00028
+                "BLUETOOTH" -> 0.00024
+                "WIFI" -> 0.00020
+                "BLE" -> 0.00018
+                else -> 0.00022
+            }
+        val angle = baseAngle + index * 0.35
+        return Pair(radius * kotlin.math.cos(angle), radius * kotlin.math.sin(angle))
+    }
+
+    private fun signalSummaryForScan(
+        scanId: String,
+        nodes: List<GraphNodeEntity>,
+        edges: List<GraphEdgeEntity>,
+    ): String {
+        val nodeById = nodes.associateBy { it.id }
+        val categories =
+            edges
+                .filter { it.relation == KnowledgeGraphBuilder.REL_OBSERVED && it.scanId == scanId }
+                .mapNotNull { edge ->
+                    nodeById[edge.toNodeId]?.metadataJson?.let { meta ->
+                        runCatching { org.json.JSONObject(meta).optString("category") }.getOrNull()
+                    }
+                }
+        if (categories.isEmpty()) return "0 signals"
+        return buildList {
+            categories.groupingBy { it }.eachCount().forEach { (cat, count) ->
+                val label =
+                    runCatching { com.signalsoop.app.model.SignalCategory.valueOf(cat) }
+                        .getOrNull()
+                        ?.label ?: cat
+                add("$count $label")
+            }
+        }.joinToString(" · ")
     }
 
     private fun coordsFromMetadata(metadataJson: String?): Pair<Double, Double>? {

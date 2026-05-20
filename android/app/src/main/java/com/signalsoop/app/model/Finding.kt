@@ -7,4 +7,5 @@ data class Finding(
     val detail: String,
     val signalStrength: Int? = null,
     val riskPoints: Int = 0,
+    val extras: FindingExtras = FindingExtras.EMPTY,
 )

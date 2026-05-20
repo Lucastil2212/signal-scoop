@@ -21,8 +21,8 @@ android {
         applicationId = "com.signalsoop.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.6.2-beta"
+        versionCode = 11
+        versionName = "1.7.0-beta"
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
@@ -94,4 +94,5 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.18")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

@@ -2,6 +2,7 @@ package com.signalsoop.app.history
 
 import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.RiskSummary
+import com.signalsoop.app.model.ScanSessionContext
 
 /** A persisted scan session with metadata for the local knowledge graph. */
 data class ScanSnapshot(
@@ -11,4 +12,5 @@ data class ScanSnapshot(
     val geoFix: ScanGeoFix?,
     val findings: List<Finding>,
     val riskSummary: RiskSummary?,
+    val sessionContext: ScanSessionContext? = null,
 )

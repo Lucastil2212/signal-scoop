@@ -3,6 +3,7 @@ package com.signalsoop.app.assistant
 import com.signalsoop.app.history.KnowledgeGraphInsights
 import com.signalsoop.app.history.KnowledgeGraphInsightsEngine
 import com.signalsoop.app.model.Finding
+import com.signalsoop.app.model.FindingFormatter
 
 /**
  * Layers on-device context for the Ask assistant: current scan facts, then knowledge-graph
@@ -52,7 +53,12 @@ object ContextIntegrationLayer {
             rows.forEach { f ->
                 val rssi = f.signalStrength?.let { " ${it}dBm" }.orEmpty()
                 val detail = f.detail.truncate(if (compact) 36 else 64)
-                appendLine("- [${f.category.label}] ${f.title.truncate(44)} — $detail$rssi")
+                val extras =
+                    FindingFormatter.extrasOneLiner(f.extras)
+                        ?.truncate(if (compact) 28 else 56)
+                        ?.let { " · $it" }
+                        .orEmpty()
+                appendLine("- [${f.category.label}] ${f.title.truncate(44)} — $detail$rssi$extras")
             }
         }
         if (includeHistory) {

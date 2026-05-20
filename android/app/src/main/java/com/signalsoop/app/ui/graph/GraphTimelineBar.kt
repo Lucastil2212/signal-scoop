@@ -126,7 +126,11 @@ fun GraphTimelineBar(
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                                 Text(
-                                    "${scan.signalCount} signals",
+                                    if (scan.signalSummary.isNotBlank()) {
+                                        scan.signalSummary
+                                    } else {
+                                        "${scan.signalCount} signals"
+                                    },
                                     color = ScoopMuted,
                                     style = MaterialTheme.typography.labelSmall,
                                 )

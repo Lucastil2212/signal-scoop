@@ -7,6 +7,7 @@ import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import com.signalsoop.app.assistant.ScanAnalytics
 import com.signalsoop.app.model.Finding
+import com.signalsoop.app.model.FindingFormatter
 import com.signalsoop.app.model.SignalCategory
 import java.io.File
 import java.text.SimpleDateFormat
@@ -157,6 +158,16 @@ object ScanReportPdfGenerator {
         val analytics = ScanAnalytics.from(scan.findings, scan.riskSummary)
         renderer.drawSubheading("Quick summary")
         analytics.formatDigest().lines().filter { it.isNotBlank() }.forEach { renderer.drawBody(it) }
+        scan.sessionContext?.let { ctx ->
+            renderer.drawSubheading("Scan environment")
+            renderer.drawMuted(ctx.formatOneLiner())
+            renderer.drawMuted(
+                "Permissions: ${ctx.permissionsGranted.joinToString(", ")} · " +
+                    "Wi-Fi ${if (ctx.wifiEnabled) "on" else "off"} · " +
+                    "BT ${if (ctx.bluetoothEnabled) "on" else "off"} · " +
+                    "NFC ${if (ctx.nfcEnabled) "on" else "off"}",
+            )
+        }
         scan.riskSummary?.let { r ->
             renderer.drawBody(
                 "Risk ${r.level.label} · ${r.score}/100 — ${r.level.description}",
@@ -203,12 +214,12 @@ object ScanReportPdfGenerator {
 
     private fun dataCollectionOverview(): List<String> =
         listOf(
-            "BLE — nearby advertisers (MAC, name, RSSI)",
-            "Wi-Fi — access points (BSSID, SSID, RSSI, hidden SSIDs)",
-            "Bluetooth — paired/bonded devices on this phone",
+            "BLE — MAC, name, RSSI, manufacturer ID, service UUIDs, TX power, connectable, adv bytes",
+            "Wi-Fi — BSSID, SSID, RSSI, channel/band, connected-AP flag, capabilities",
+            "Bluetooth — paired devices with bond state, device class, and link type",
             "NFC — hardware present and enabled/disabled",
-            "Sensors — on-phone sensor inventory (not nearby transmitters)",
-            "System — permissions and scan status messages",
+            "Sensors — inventory with vendor, resolution, range, min delay, power",
+            "Session — device model, Android version, scan duration, permissions, radios, VPN",
             "GPS — coordinates, accuracy, provider, altitude",
             "Risk — heuristic score from passive radio patterns",
             "Knowledge graph — links scans, places, and recurring signals locally",
@@ -302,6 +313,9 @@ object ScanReportPdfGenerator {
             val rssi = finding.signalStrength?.let { " · $it dBm" }.orEmpty()
             val risk = if (finding.riskPoints > 0) " · risk +${finding.riskPoints}" else ""
             drawBullet("${finding.title} — ${finding.detail}$rssi$risk", colorArgb)
+            FindingFormatter.extrasLines(finding.extras).forEach { line ->
+                drawMuted("  $line")
+            }
         }
 
         fun spacer(px: Float) {

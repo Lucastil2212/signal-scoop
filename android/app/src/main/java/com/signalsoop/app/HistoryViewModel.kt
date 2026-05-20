@@ -11,6 +11,7 @@ import com.signalsoop.app.history.GraphVisualization
 import com.signalsoop.app.history.linkKeyToParts
 import com.signalsoop.app.history.KnowledgeGraphBuilder
 import com.signalsoop.app.history.KnowledgeGraphInsights
+import com.signalsoop.app.history.ScanFindingCounts
 import com.signalsoop.app.history.ScanHistoryRepository
 import com.signalsoop.app.history.ScanReportPdfGenerator
 import com.signalsoop.app.history.ScanSnapshot
@@ -111,7 +112,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
 
     fun openScanDetail(scanId: String) {
         val name = snapshotForScan(scanId)?.name ?: "Scan"
-        val count = radioFindingsForScan(scanId).size
+        val count = findingsForScan(scanId).size
         _uiState.update {
             it.copy(
                 scanDetailScanId = scanId,
@@ -193,8 +194,11 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     fun snapshotForScan(scanId: String): ScanSnapshot? =
         _uiState.value.snapshots.find { it.id == scanId }
 
-    fun radioFindingsForScan(scanId: String): List<Finding> =
-        snapshotForScan(scanId)?.findings?.filter(::isRadioFinding).orEmpty()
+    fun findingsForScan(scanId: String): List<Finding> =
+        snapshotForScan(scanId)?.findings?.let { KnowledgeGraphBuilder.displayableFindings(it) }.orEmpty()
+
+    fun findingCountsForScan(scanId: String): ScanFindingCounts =
+        ScanFindingCounts.from(snapshotForScan(scanId)?.findings.orEmpty())
 
     fun findingsForSignalKey(signalKey: String): List<Finding> =
         _uiState.value.snapshots.flatMap { scan ->
@@ -213,9 +217,6 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         _uiState.value.graphEdges
             .filter { it.relation == KnowledgeGraphBuilder.REL_AT_PLACE && it.toNodeId == placeNodeId }
             .mapNotNull { scanIdFromGraphNode(it.fromNodeId) }
-
-    private fun isRadioFinding(finding: Finding): Boolean =
-        finding.category != SignalCategory.SYSTEM && finding.category != SignalCategory.SENSORS
 
     private fun signalKeyFromFinding(finding: Finding): String? =
         KnowledgeGraphBuilder.graphSignalKeyFrom(finding)

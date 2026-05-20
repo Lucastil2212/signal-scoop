@@ -55,7 +55,12 @@ fun KnowledgeGraphMapLayer(
 ) {
     val context = LocalContext.current
     val slice = remember(visualization, filterScanId) { GraphTimelineFilter.slice(visualization, filterScanId) }
-    val geoNodes = remember(slice) { slice.nodes.filter { it.lat != null && it.lon != null } }
+    val geoNodes =
+        remember(slice) {
+            slice.nodes
+                .filter { it.lat != null && it.lon != null }
+                .sortedBy { mapDrawOrder(it) }
+        }
 
     DisposableEffect(Unit) {
         Configuration.getInstance().userAgentValue = context.packageName
@@ -177,6 +182,19 @@ private fun drawLink(
     }
     map.overlays.add(line)
 }
+
+/** Lower sorts first; later markers paint on top (sensors/NFC stay visible). */
+private fun mapDrawOrder(node: GraphVisNode): Int =
+    when {
+        node.type == KnowledgeGraphBuilder.NODE_PLACE -> 0
+        node.type == KnowledgeGraphBuilder.NODE_SCAN -> 1
+        node.signalCategory == "BLE" -> 2
+        node.signalCategory == "WIFI" -> 3
+        node.signalCategory == "BLUETOOTH" -> 4
+        node.signalCategory == "NFC" -> 5
+        node.signalCategory == "SENSORS" -> 6
+        else -> 3
+    }
 
 private fun radiusDp(type: String, signalCategory: String?): Int =
     when (type) {

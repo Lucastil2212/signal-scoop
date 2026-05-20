@@ -11,6 +11,7 @@ data class GraphTimelineScan(
     val lon: Double?,
     val color: Color,
     val signalCount: Int,
+    val signalSummary: String = "",
 )
 
 /** Nodes and links visible for the current timeline filter. */

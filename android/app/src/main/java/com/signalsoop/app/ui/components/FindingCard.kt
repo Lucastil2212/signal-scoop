@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.signalsoop.app.model.Finding
+import com.signalsoop.app.model.FindingFormatter
 import com.signalsoop.app.model.SignalCategory
 import com.signalsoop.app.ui.theme.ScoopBlue
 import com.signalsoop.app.ui.theme.ScoopGreen
@@ -75,6 +76,13 @@ fun FindingCard(finding: Finding, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = ScoopMuted,
             )
+            FindingFormatter.extrasLines(finding.extras).forEach { line ->
+                Text(
+                    line,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ScoopGreen,
+                )
+            }
         }
     }
 }

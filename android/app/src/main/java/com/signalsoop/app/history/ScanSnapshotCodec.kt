@@ -1,9 +1,13 @@
 package com.signalsoop.app.history
 
 import com.signalsoop.app.model.Finding
+import com.signalsoop.app.model.FindingExtrasCodec
 import com.signalsoop.app.model.RiskLevel
 import com.signalsoop.app.model.RiskSummary
+import com.signalsoop.app.model.ScanSessionContext
+import com.signalsoop.app.model.ScanSessionContextCodec
 import com.signalsoop.app.model.SignalCategory
+import com.signalsoop.app.util.JsonEncoding.encodeToString
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -12,16 +16,18 @@ object ScanSnapshotCodec {
         val array = JSONArray()
         findings.forEach { f ->
             array.put(
-                JSONObject()
-                    .put("id", f.id)
-                    .put("category", f.category.name)
-                    .put("title", f.title)
-                    .put("detail", f.detail)
-                    .put("signalStrength", f.signalStrength ?: JSONObject.NULL)
-                    .put("riskPoints", f.riskPoints),
+                JSONObject().apply {
+                    put("id", f.id)
+                    put("category", f.category.name)
+                    put("title", f.title)
+                    put("detail", f.detail)
+                    put("signalStrength", f.signalStrength ?: JSONObject.NULL)
+                    put("riskPoints", f.riskPoints)
+                    FindingExtrasCodec.toJson(f.extras)?.let { put("extras", it) }
+                },
             )
         }
-        return array.toString()
+        return array.encodeToString()
     }
 
     fun decodeFindings(json: String): List<Finding> {
@@ -38,6 +44,10 @@ object ScanSnapshotCodec {
                         signalStrength =
                             if (o.isNull("signalStrength")) null else o.getInt("signalStrength"),
                         riskPoints = o.optInt("riskPoints", 0),
+                        extras =
+                            FindingExtrasCodec.fromJson(
+                                if (o.has("extras") && !o.isNull("extras")) o.getJSONObject("extras") else null,
+                            ),
                     ),
                 )
             }
@@ -47,7 +57,7 @@ object ScanSnapshotCodec {
     fun encodeRiskHighlights(highlights: List<String>): String {
         val array = JSONArray()
         highlights.forEach { array.put(it) }
-        return array.toString()
+        return array.encodeToString()
     }
 
     fun decodeRiskHighlights(json: String): List<String> {
@@ -71,4 +81,10 @@ object ScanSnapshotCodec {
             highlights = decodeRiskHighlights(highlightsJson),
         )
     }
+
+    fun encodeSessionContext(ctx: ScanSessionContext?): String? =
+        ctx?.let { ScanSessionContextCodec.encode(it) }
+
+    fun decodeSessionContext(json: String?): ScanSessionContext? =
+        ScanSessionContextCodec.decode(json)
 }

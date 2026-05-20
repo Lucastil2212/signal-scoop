@@ -4,6 +4,7 @@ import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorManager
 import com.signalsoop.app.model.Finding
+import com.signalsoop.app.model.FindingExtras
 import com.signalsoop.app.model.SignalCategory
 import java.util.UUID
 
@@ -30,6 +31,15 @@ class SensorScanner(context: Context) {
                 category = SignalCategory.SENSORS,
                 title = sensor.name,
                 detail = "Vendor: ${sensor.vendor} · Type: ${sensor.stringType}",
+                extras =
+                    FindingExtras(
+                        sensorStringType = sensor.stringType,
+                        sensorVendor = sensor.vendor,
+                        sensorMinDelayUs = sensor.minDelay,
+                        sensorMaxRange = sensor.maximumRange,
+                        sensorResolution = sensor.resolution,
+                        sensorPowerMa = sensor.power,
+                    ),
             )
         }
     }

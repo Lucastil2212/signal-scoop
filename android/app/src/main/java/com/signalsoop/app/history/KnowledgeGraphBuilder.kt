@@ -4,6 +4,7 @@ import com.signalsoop.app.history.db.GraphEdgeEntity
 import com.signalsoop.app.history.db.GraphNodeEntity
 import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.SignalCategory
+import com.signalsoop.app.util.JsonEncoding.encodeToString
 import org.json.JSONObject
 
 /**
@@ -20,7 +21,8 @@ object KnowledgeGraphBuilder {
     const val REL_OBSERVED = "OBSERVED"
     const val REL_REPEAT = "REPEAT"
 
-    private val graphExcludedIds =
+    /** Status-only rows omitted from history UI and graph (not real signals). */
+    val excludedFindingIds =
         setOf(
             "permissions-missing",
             "ble-permission",
@@ -61,13 +63,20 @@ object KnowledgeGraphBuilder {
                     put("lat", fix.latitude)
                     put("lon", fix.longitude)
                 }
+                snapshot.sessionContext?.let { ctx ->
+                    put("deviceModel", "${ctx.deviceManufacturer} ${ctx.deviceModel}")
+                    put("androidVersion", ctx.androidVersion)
+                    put("scanDurationMs", ctx.scanDurationMs)
+                    put("airplaneModeOn", ctx.airplaneModeOn)
+                    if (ctx.vpnActive == true) put("vpnActive", true)
+                }
             }
         nodes +=
             GraphNodeEntity(
                 id = scanNodeId,
                 nodeType = NODE_SCAN,
                 label = snapshot.name,
-                metadataJson = scanMeta.toString(),
+                metadataJson = scanMeta.encodeToString(),
             )
 
         val placeKey = snapshot.geoFix?.let { placeKeyFor(it.latitude, it.longitude) }
@@ -84,7 +93,7 @@ object KnowledgeGraphBuilder {
                                 put("lat", snapshot.geoFix.latitude)
                                 put("lon", snapshot.geoFix.longitude)
                             }
-                            .toString(),
+                            .encodeToString(),
                 )
             edges +=
                 GraphEdgeEntity(
@@ -104,7 +113,7 @@ object KnowledgeGraphBuilder {
                     id = signalNodeId,
                     nodeType = NODE_SIGNAL,
                     label = graphSignalLabel(finding),
-                    metadataJson = signalMetadataJson(finding).toString(),
+                    metadataJson = signalMetadataJson(finding).encodeToString(),
                 )
             edges +=
                 GraphEdgeEntity(
@@ -151,8 +160,13 @@ object KnowledgeGraphBuilder {
 
     fun graphSignalKeyFrom(finding: Finding): String? = graphSignalKey(finding)
 
+    fun isDisplayableFinding(finding: Finding): Boolean = finding.id !in excludedFindingIds
+
+    fun displayableFindings(findings: List<Finding>): List<Finding> =
+        findings.filter(::isDisplayableFinding)
+
     fun isGraphSignal(finding: Finding): Boolean {
-        if (finding.id in graphExcludedIds) return false
+        if (finding.id in excludedFindingIds) return false
         return when (finding.category) {
             SignalCategory.BLE,
             SignalCategory.WIFI,
@@ -181,6 +195,7 @@ object KnowledgeGraphBuilder {
             put("findingId", finding.id)
             finding.signalStrength?.let { put("rssi", it) }
             if (finding.riskPoints > 0) put("riskPoints", finding.riskPoints)
+            com.signalsoop.app.model.FindingExtrasCodec.mergeInto(this, finding.extras)
         }
 
     private fun graphSignalKey(finding: Finding): String? {

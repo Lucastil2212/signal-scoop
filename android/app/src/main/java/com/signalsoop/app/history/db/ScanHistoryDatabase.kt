@@ -19,7 +19,7 @@ import androidx.room.RoomDatabase
         com.signalsoop.app.mesh.db.MeshSessionEntity::class,
         com.signalsoop.app.mesh.db.MeshPeerEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class ScanHistoryDatabase : RoomDatabase() {
@@ -39,6 +39,7 @@ abstract class ScanHistoryDatabase : RoomDatabase() {
                 .addMigrations(
                     ScanHistoryMigrations.MIGRATION_1_2,
                     ScanHistoryMigrations.MIGRATION_2_3,
+                    ScanHistoryMigrations.MIGRATION_3_4,
                 )
                 .build()
     }

@@ -19,4 +19,5 @@ data class SavedScanEntity(
     val riskLevel: String?,
     val riskHighlightsJson: String,
     val placeKey: String?,
+    val sessionContextJson: String? = null,
 )
