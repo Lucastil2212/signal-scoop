@@ -37,18 +37,18 @@ class ScanCoordinator(context: Context) {
         val findings = mutableListOf<Finding>()
 
         onProgress("Checking phone sensors…")
-        findings += sensorScanner.scan()
+        findings += runScanner { sensorScanner.scan() }
 
         onProgress("Checking NFC…")
-        findings += nfcScanner.scan()
+        findings += runScanner { nfcScanner.scan() }
 
         onProgress("Listing paired Bluetooth devices…")
-        findings += bluetoothScanner.scanPaired()
+        findings += runScanner { bluetoothScanner.scanPaired() }
 
         onProgress("Scanning BLE (about 8 seconds)…")
-        val bleDeferred = async { bleScanner.scan() }
+        val bleDeferred = async { runScanner { bleScanner.scan() } }
         onProgress("Scanning Wi-Fi…")
-        val wifiDeferred = async { wifiScanner.scan() }
+        val wifiDeferred = async { runScanner { wifiScanner.scan() } }
 
         findings += bleDeferred.await()
         findings += wifiDeferred.await()
@@ -70,4 +70,17 @@ class ScanCoordinator(context: Context) {
 
         ScanRunResult(findings = findings, sessionContext = sessionContext)
     }
+
+    private suspend fun runScanner(block: suspend () -> List<Finding>): List<Finding> =
+        runCatching { block() }.getOrElse { error ->
+            listOf(
+                Finding(
+                    id = "scanner-error-${System.nanoTime()}",
+                    category = SignalCategory.SYSTEM,
+                    title = "Scanner step failed",
+                    detail = error.message ?: error.javaClass.simpleName,
+                    riskPoints = 2,
+                ),
+            )
+        }
 }

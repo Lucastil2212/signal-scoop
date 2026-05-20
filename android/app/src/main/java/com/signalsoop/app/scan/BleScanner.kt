@@ -12,6 +12,7 @@ import com.signalsoop.app.model.SignalCategory
 import com.signalsoop.app.security.PermissionGuard
 import com.signalsoop.app.security.ScanPolicy
 import kotlinx.coroutines.delay
+import java.util.concurrent.ConcurrentHashMap
 
 class BleScanner(private val context: Context) {
     private val bluetoothManager =
@@ -61,16 +62,16 @@ class BleScanner(private val context: Context) {
                 ),
             )
 
-        val collected = linkedMapOf<String, BleObservation>()
+        val collected = ConcurrentHashMap<String, BleObservation>()
 
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
-                val device = result.device
-                val address = device.address
-                val now = System.currentTimeMillis()
-                val existing = collected[address]
-                val observation = mergeBleResult(result, existing, now)
-                collected[address] = observation
+                runCatching {
+                    val address = result.device.address ?: return
+                    val now = System.currentTimeMillis()
+                    val existing = collected[address]
+                    collected[address] = mergeBleResult(result, existing, now)
+                }
             }
 
             override fun onScanFailed(errorCode: Int) {
@@ -119,7 +120,7 @@ class BleScanner(private val context: Context) {
         now: Long,
     ): BleObservation {
         val device = result.device
-        val name = device.name ?: "Unknown BLE device"
+        val name = runCatching { device.name }.getOrNull() ?: "Unknown BLE device"
         val address = device.address
         val rssi = result.rssi
         val record = result.scanRecord
@@ -129,10 +130,19 @@ class BleScanner(private val context: Context) {
             }
         val serviceUuids =
             record?.serviceUuids?.map { it.toString() }?.distinct()?.take(8)
-        val txPower = record?.txPowerLevel?.takeIf { it != Int.MIN_VALUE }
-            ?: result.txPower.takeIf { it != Int.MIN_VALUE }
+        val txPower =
+            record?.txPowerLevel?.takeIf { it != Int.MIN_VALUE }
+                ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    result.txPower.takeIf { it != Int.MIN_VALUE }
+                } else {
+                    null
+                }
         val connectable =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) result.isConnectable else null
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                runCatching { result.isConnectable }.getOrNull()
+            } else {
+                null
+            }
         val adHex =
             record?.bytes?.take(24)?.joinToString("") { b -> "%02x".format(b.toInt() and 0xFF) }
 

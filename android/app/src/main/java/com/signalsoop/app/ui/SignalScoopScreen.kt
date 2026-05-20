@@ -178,7 +178,10 @@ fun SignalScoopScreen(
                 }
             }
 
-            items(filtered, key = { it.id }) { finding ->
+            items(
+                filtered,
+                key = { finding -> "${finding.id}-${finding.category}-${finding.title}" },
+            ) { finding ->
                 FindingCard(finding = finding)
             }
 

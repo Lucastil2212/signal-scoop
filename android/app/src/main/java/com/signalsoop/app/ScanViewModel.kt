@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 data class ScanUiState(
@@ -99,19 +100,27 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 val risk = RiskScorer.summarize(filtered)
                 val sentinel = DefenseSentinel.analyze(filtered, risk)
                 val saved =
-                    app.scanHistoryRepository.saveScan(
-                        findings = results,
-                        riskSummary = risk,
-                        geoFix = geoFix,
-                        sessionContext = scanRun.sessionContext,
-                    )
+                    runCatching {
+                        app.scanHistoryRepository.saveScan(
+                            findings = results,
+                            riskSummary = risk,
+                            geoFix = geoFix,
+                            sessionContext = scanRun.sessionContext,
+                        )
+                    }.onFailure { error ->
+                        android.util.Log.e("ScanViewModel", "saveScan failed", error)
+                    }.getOrNull()
                 val status =
                     buildString {
                         append("Last scan finished · ${results.size} findings")
                         geoFix?.let { fix ->
                             append(" · GPS ${fix.formatCoordinates()} (${fix.formatAccuracy()})")
                         } ?: append(" · GPS unavailable (enable location for coordinates)")
-                        append(" · saved to History")
+                        if (saved != null) {
+                            append(" · saved to History")
+                        } else {
+                            append(" · could not save to History (results shown above)")
+                        }
                     }
                 _uiState.update {
                     it.copy(
@@ -124,6 +133,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                         statusMessage = status,
                     )
                 }
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Exception) {
                 _uiState.update {
                     it.copy(
@@ -143,7 +154,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Clears sensitive in-memory results (e.g. when app is no longer visible). */
     fun clearSensitiveResults() {
-        cancelScan()
+        if (_uiState.value.isScanning) return
+        scanJob?.cancel()
+        scanJob = null
         _uiState.update {
             it.copy(
                 findings = emptyList(),
