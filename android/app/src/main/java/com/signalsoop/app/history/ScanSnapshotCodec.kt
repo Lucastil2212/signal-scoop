@@ -31,28 +31,36 @@ object ScanSnapshotCodec {
     }
 
     fun decodeFindings(json: String): List<Finding> {
-        val array = JSONArray(json)
-        return buildList {
-            for (i in 0 until array.length()) {
-                val o = array.getJSONObject(i)
-                add(
-                    Finding(
-                        id = o.getString("id"),
-                        category = SignalCategory.valueOf(o.getString("category")),
-                        title = o.getString("title"),
-                        detail = o.getString("detail"),
-                        signalStrength =
-                            if (o.isNull("signalStrength")) null else o.getInt("signalStrength"),
-                        riskPoints = o.optInt("riskPoints", 0),
-                        extras =
-                            FindingExtrasCodec.fromJson(
-                                if (o.has("extras") && !o.isNull("extras")) o.getJSONObject("extras") else null,
-                            ),
-                    ),
-                )
+        if (json.isBlank()) return emptyList()
+        return runCatching {
+            val array = JSONArray(json)
+            buildList {
+                for (i in 0 until array.length()) {
+                    decodeFinding(array.getJSONObject(i))?.let { add(it) }
+                }
             }
-        }
+        }.getOrElse { emptyList() }
     }
+
+    private fun decodeFinding(row: JSONObject): Finding? =
+        runCatching {
+            val category =
+                runCatching { SignalCategory.valueOf(row.getString("category")) }.getOrNull()
+                    ?: return null
+            Finding(
+                id = row.getString("id"),
+                category = category,
+                title = row.optString("title", "Unknown"),
+                detail = row.optString("detail", ""),
+                signalStrength =
+                    if (row.isNull("signalStrength")) null else row.getInt("signalStrength"),
+                riskPoints = row.optInt("riskPoints", 0),
+                extras =
+                    FindingExtrasCodec.fromJson(
+                        if (row.has("extras") && !row.isNull("extras")) row.getJSONObject("extras") else null,
+                    ),
+            )
+        }.getOrNull()
 
     fun encodeRiskHighlights(highlights: List<String>): String {
         val array = JSONArray()

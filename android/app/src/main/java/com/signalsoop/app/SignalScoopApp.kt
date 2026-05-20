@@ -40,7 +40,7 @@ class SignalScoopApp : Application() {
     override fun onCreate() {
         super.onCreate()
         securePrefs = SecurePrefs(this)
-        AppLifecycleGuard.install()
+        runCatching { AppLifecycleGuard.install() }
         llmPrefs = LlmPrefs(this)
         scanAssistant = ScanAssistant(llm)
         val historyDb = ScanHistoryDatabase.create(this)

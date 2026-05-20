@@ -70,13 +70,12 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         )
 
     init {
-        refreshGraphAndInsights()
         viewModelScope.launch {
             repository.snapshots.collect { list ->
                 _uiState.update { it.copy(snapshots = list) }
-                refreshGraphAndInsights()
             }
         }
+        refreshGraphAndInsights()
         viewModelScope.launch {
             repository.vault.collect { vault ->
                 _uiState.update { it.copy(vault = vault) }
@@ -90,18 +89,29 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
 
     fun refreshGraphAndInsights() {
         viewModelScope.launch {
-            repository.rebuildKnowledgeGraphFromHistory()
-            val insights = repository.buildInsights()
-            val json = repository.buildGraphJson()
-            val visualization = repository.buildVisualization()
-            val edges = repository.graphEdges()
-            _uiState.update {
-                it.copy(
-                    insights = insights,
-                    graphJson = json,
-                    graphVisualization = visualization,
-                    graphEdges = edges,
-                )
+            runCatching {
+                repository.rebuildKnowledgeGraphFromHistory()
+                val insights = repository.buildInsights()
+                val json = repository.buildGraphJson()
+                val visualization = repository.buildVisualization()
+                val edges = repository.graphEdges()
+                _uiState.update {
+                    it.copy(
+                        insights = insights,
+                        graphJson = json,
+                        graphVisualization = visualization,
+                        graphEdges = edges,
+                        statusMessage = "Your knowledge graph stays on this device.",
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        statusMessage =
+                            "Could not refresh the knowledge graph. Try again or clear app data if this persists.",
+                    )
+                }
+                android.util.Log.e("HistoryViewModel", "refreshGraphAndInsights failed", error)
             }
         }
     }

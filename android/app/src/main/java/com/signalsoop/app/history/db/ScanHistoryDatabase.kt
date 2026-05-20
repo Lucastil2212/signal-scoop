@@ -1,6 +1,7 @@
 package com.signalsoop.app.history.db
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -30,17 +31,25 @@ abstract class ScanHistoryDatabase : RoomDatabase() {
     companion object {
         private const val DB_NAME = "signal_scoop_scan_history.db"
 
-        fun create(context: Context): ScanHistoryDatabase =
-            Room.databaseBuilder(
-                context.applicationContext,
-                ScanHistoryDatabase::class.java,
-                DB_NAME,
-            )
+        fun create(context: Context): ScanHistoryDatabase {
+            val appContext = context.applicationContext
+            return runCatching { open(appContext) }
+                .getOrElse { error ->
+                    Log.e(TAG, "Scan history DB open failed; recreating local database", error)
+                    appContext.deleteDatabase(DB_NAME)
+                    open(appContext)
+                }
+        }
+
+        private fun open(context: Context): ScanHistoryDatabase =
+            Room.databaseBuilder(context, ScanHistoryDatabase::class.java, DB_NAME)
                 .addMigrations(
                     ScanHistoryMigrations.MIGRATION_1_2,
                     ScanHistoryMigrations.MIGRATION_2_3,
                     ScanHistoryMigrations.MIGRATION_3_4,
                 )
                 .build()
+
+        private const val TAG = "ScanHistoryDatabase"
     }
 }

@@ -37,6 +37,18 @@ class ScanSnapshotCodecTest {
     }
 
     @Test
+    fun skipsCorruptFindingRows() {
+        val json =
+            """[
+                {"id":"ble-ok","category":"BLE","title":"Ok","detail":"x"},
+                {"id":"bad","category":"NOT_A_REAL_CATEGORY","title":"X","detail":""}
+            ]"""
+        val decoded = ScanSnapshotCodec.decodeFindings(json)
+        assertEquals(1, decoded.size)
+        assertEquals("ble-ok", decoded[0].id)
+    }
+
+    @Test
     fun roundTripsSessionContext() {
         val ctx =
             ScanSessionContext(

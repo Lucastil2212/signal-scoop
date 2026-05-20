@@ -126,9 +126,28 @@ object ScanHistoryMigrations {
     val MIGRATION_3_4 =
         object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    "ALTER TABLE saved_scans ADD COLUMN session_context_json TEXT",
-                )
+                if (!columnExists(db, "saved_scans", "session_context_json")) {
+                    db.execSQL(
+                        "ALTER TABLE saved_scans ADD COLUMN session_context_json TEXT",
+                    )
+                }
             }
         }
+
+    private fun columnExists(
+        db: SupportSQLiteDatabase,
+        table: String,
+        column: String,
+    ): Boolean {
+        db.query("PRAGMA table_info($table)").use { cursor ->
+            val nameIndex = cursor.getColumnIndex("name")
+            if (nameIndex < 0) return false
+            while (cursor.moveToNext()) {
+                if (column.equals(cursor.getString(nameIndex), ignoreCase = true)) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
 }
