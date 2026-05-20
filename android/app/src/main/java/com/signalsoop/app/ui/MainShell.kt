@@ -52,13 +52,25 @@ fun MainShell(
     if (graphFullscreen) {
         GraphFullscreenScreen(
             viewModel = historyViewModel,
-            graphJson = historyState.graphJson,
-            statusMessage = historyState.statusMessage,
             onDismiss = { graphFullscreen = false },
+            onOpenGraphTab = { tab = MainTab.Graph },
             modifier = Modifier.fillMaxSize(),
         )
         return
     }
+
+    GraphDetailSheet(
+        nodeId = historyState.graphDetailNodeId,
+        link = historyState.graphDetailLink,
+        viewModel = historyViewModel,
+        uiState = historyState,
+        onDismiss = historyViewModel::dismissGraphDetail,
+        onOpenTimelineForScan = { scanId ->
+            historyViewModel.dismissGraphDetail()
+            tab = MainTab.Graph
+            historyViewModel.selectScan(scanId)
+        },
+    )
 
     Scaffold(
         containerColor = ScoopBlack,

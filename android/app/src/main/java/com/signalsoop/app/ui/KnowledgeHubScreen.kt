@@ -49,6 +49,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -66,6 +67,7 @@ import com.signalsoop.app.history.ScanSnapshot
 import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.SignalCategory
 import com.signalsoop.app.ui.components.CopyIconButton
+import com.signalsoop.app.ui.graph.KnowledgeGraphGeoTimelineView
 import com.signalsoop.app.ui.components.FindingCard
 import com.signalsoop.app.ui.components.ManticoreFooter
 import com.signalsoop.app.ui.components.RiskCard
@@ -83,7 +85,7 @@ import java.util.Locale
 
 private enum class HubTab(val label: String) {
     Timeline("Timeline"),
-    Graph3d("3D Graph"),
+    GraphMap("Map + time"),
     Vault("Vault"),
 }
 
@@ -126,7 +128,7 @@ fun KnowledgeHubScreen(
                     Column {
                         Text("Knowledge", color = ScoopWhite)
                         Text(
-                            "Scans · 3D graph · local vault",
+                            "Scans · map graph · local vault",
                             style = MaterialTheme.typography.bodySmall,
                             color = ScoopMuted,
                         )
@@ -209,47 +211,49 @@ fun KnowledgeHubScreen(
                         viewModel = viewModel,
                         modifier = Modifier.weight(1f),
                     )
-                HubTab.Graph3d ->
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (uiState.graphJson.length > 20) {
-                            KnowledgeGraph3DView(
-                                graphJson = uiState.graphJson,
-                                onNodeSelected = viewModel::onGraphNodeSelected,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        } else {
-                            Text(
-                                "Run scans to populate the 3D graph.",
-                                modifier = Modifier.padding(24.dp),
-                                color = ScoopMuted,
-                            )
-                        }
-                        Row(
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            FilledTonalButton(
-                                onClick = onOpenGraphFullscreen,
-                                modifier = Modifier.weight(1f),
-                                enabled = uiState.graphJson.length > 20,
+                HubTab.GraphMap -> {
+                    LaunchedEffect(Unit) { viewModel.refreshGraphAndInsights() }
+                    KnowledgeGraphGeoTimelineView(
+                        visualization = uiState.graphVisualization,
+                        filterScanId = uiState.graphFilterScanId,
+                        onFilterScanChange = viewModel::setGraphTimelineFilter,
+                        onNodeSelected = viewModel::onGraphNodeSelected,
+                        onLinkSelected = viewModel::onGraphLinkSelected,
+                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        emptyMessage =
+                            "Save a scan on the Scan tab, then return here. Tap nodes or lines for details.",
+                        footer = {
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Icon(Icons.Rounded.OpenInFull, contentDescription = null)
-                                Text(" Full screen")
+                                FilledTonalButton(
+                                    onClick = onOpenGraphFullscreen,
+                                    modifier = Modifier.weight(1f),
+                                    enabled = (uiState.graphVisualization?.nodes?.isNotEmpty() == true),
+                                ) {
+                                    Icon(Icons.Rounded.OpenInFull, contentDescription = null)
+                                    Text("Full screen")
+                                }
+                                FilledTonalButton(
+                                    onClick = { viewModel.refreshGraphAndInsights() },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("Refresh")
+                                }
+                                FilledTonalButton(
+                                    onClick = { viewModel.anchorGraphToEvrmore() },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("Anchor")
+                                }
                             }
-                            FilledTonalButton(
-                                onClick = { viewModel.refreshGraphAndInsights() },
-                                modifier = Modifier.weight(1f),
-                            ) { Text("Refresh") }
-                            FilledTonalButton(
-                                onClick = { viewModel.anchorGraphToEvrmore() },
-                                modifier = Modifier.weight(1f),
-                            ) { Text("Anchor") }
-                        }
-                    }
+                        },
+                    )
+                }
                 HubTab.Vault ->
                     VaultTab(
                         uiState = uiState,

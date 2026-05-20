@@ -32,16 +32,19 @@ object KnowledgeGraphBuilder {
         val edges = mutableListOf<GraphEdgeEntity>()
         val scanNodeId = scanNodeId(snapshot.id)
 
+        val scanMeta =
+            JSONObject()
+                .put("scannedAt", snapshot.scannedAtEpochMs)
+                .put("riskScore", snapshot.riskSummary?.score ?: JSONObject.NULL)
+        snapshot.geoFix?.let { fix ->
+            scanMeta.put("lat", fix.latitude).put("lon", fix.longitude)
+        }
         nodes +=
             GraphNodeEntity(
                 id = scanNodeId,
                 nodeType = NODE_SCAN,
                 label = snapshot.name,
-                metadataJson =
-                    JSONObject()
-                        .put("scannedAt", snapshot.scannedAtEpochMs)
-                        .put("riskScore", snapshot.riskSummary?.score ?: JSONObject.NULL)
-                        .toString(),
+                metadataJson = scanMeta.toString(),
             )
 
         val placeKey = snapshot.geoFix?.let { placeKeyFor(it.latitude, it.longitude) }

@@ -19,13 +19,14 @@
 -keep class com.signalsoop.app.evr.** { *; }
 -keep class com.signalsoop.app.mesh.** { *; }
 
-# 3D graph WebView bridge (release must keep JS interfaces or graph stays blank)
+# OSMDroid map tiles (graph hub)
+-dontwarn org.osmdroid.**
+
+# Map graph WebView bridge (legacy; graph uses native canvas + OSMDroid)
 -keepattributes JavascriptInterface
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
--keep class com.signalsoop.app.ui.KnowledgeGraph3DView { *; }
--keep class com.signalsoop.app.ui.KnowledgeGraph3DView$* { *; }
 -keep class com.signalsoop.app.ui.GraphPayloadBridge { *; }
 
 # On-device MediaPipe LiteRT (from cil-graph android client)

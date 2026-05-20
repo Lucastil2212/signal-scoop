@@ -1,6 +1,5 @@
 package com.signalsoop.app.ui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -15,31 +14,46 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.signalsoop.app.HistoryViewModel
+import com.signalsoop.app.ui.graph.KnowledgeGraphGeoTimelineView
 import com.signalsoop.app.ui.theme.ScoopBlack
 import com.signalsoop.app.ui.theme.ScoopGreen
-import com.signalsoop.app.ui.theme.ScoopMuted
 import com.signalsoop.app.ui.theme.ScoopWhite
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GraphFullscreenScreen(
     viewModel: HistoryViewModel,
-    graphJson: String,
-    statusMessage: String,
     onDismiss: () -> Unit,
+    onOpenGraphTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    GraphDetailSheet(
+        nodeId = uiState.graphDetailNodeId,
+        link = uiState.graphDetailLink,
+        viewModel = viewModel,
+        uiState = uiState,
+        onDismiss = viewModel::dismissGraphDetail,
+        onOpenTimelineForScan = {
+            viewModel.dismissGraphDetail()
+            onDismiss()
+            onOpenGraphTab()
+            viewModel.selectScan(it)
+        },
+    )
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = ScoopBlack,
         topBar = {
             TopAppBar(
                 title = {
-                    Text("3D knowledge graph", color = ScoopWhite)
+                    Text("Knowledge graph", color = ScoopWhite)
                 },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
@@ -55,33 +69,16 @@ fun GraphFullscreenScreen(
             )
         },
     ) { padding ->
-        Box(
+        KnowledgeGraphGeoTimelineView(
+            visualization = uiState.graphVisualization,
+            filterScanId = uiState.graphFilterScanId,
+            onFilterScanChange = viewModel::setGraphTimelineFilter,
+            onNodeSelected = viewModel::onGraphNodeSelected,
+            onLinkSelected = viewModel::onGraphLinkSelected,
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(padding),
-        ) {
-            if (graphJson.length > 20) {
-                KnowledgeGraph3DView(
-                    graphJson = graphJson,
-                    onNodeSelected = viewModel::onGraphNodeSelected,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Text(
-                    "Run scans to populate your knowledge graph.",
-                    color = ScoopMuted,
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                )
-            }
-            Text(
-                statusMessage,
-                color = ScoopMuted,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(12.dp),
-            )
-        }
+        )
     }
 }

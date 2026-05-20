@@ -124,13 +124,16 @@ fun SignalScoopScreen(
 
             item {
                 KnowledgeGraphPreviewCard(
-                    graphJson = historyState.graphJson,
+                    visualization = historyState.graphVisualization,
+                    filterScanId = historyState.graphFilterScanId,
+                    onFilterScanChange = historyViewModel::setGraphTimelineFilter,
                     scanCount = insights?.totalScans ?: historyState.snapshots.size,
                     placeCount = insights?.uniquePlaces ?: 0,
                     signalCount = insights?.recurringSignals?.size ?: 0,
                     onOpenFullscreen = onOpenGraphFullscreen,
                     onOpenGraphTab = onOpenGraphTab,
                     onNodeSelected = historyViewModel::onGraphNodeSelected,
+                    onLinkSelected = historyViewModel::onGraphLinkSelected,
                 )
             }
 

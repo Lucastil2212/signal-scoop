@@ -22,7 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.signalsoop.app.ui.KnowledgeGraph3DView
+import com.signalsoop.app.history.GraphVisualization
+import com.signalsoop.app.ui.graph.KnowledgeGraphGeoTimelineView
 import com.signalsoop.app.ui.theme.ScoopBlack
 import com.signalsoop.app.ui.theme.ScoopGreen
 import com.signalsoop.app.ui.theme.ScoopMuted
@@ -31,16 +32,19 @@ import com.signalsoop.app.ui.theme.ScoopWhite
 
 @Composable
 fun KnowledgeGraphPreviewCard(
-    graphJson: String,
+    visualization: GraphVisualization?,
+    filterScanId: String?,
+    onFilterScanChange: (String?) -> Unit,
     scanCount: Int,
     placeCount: Int,
     signalCount: Int,
     onOpenFullscreen: () -> Unit,
     onOpenGraphTab: () -> Unit,
-    onNodeSelected: (nodeId: String, label: String) -> Unit,
+    onNodeSelected: (nodeId: String, nodeType: String, label: String) -> Unit,
+    onLinkSelected: (sourceId: String, targetId: String, relation: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hasGraph = graphJson.length > 20
+    val hasGraph = visualization?.nodes?.isNotEmpty() == true
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -78,25 +82,19 @@ fun KnowledgeGraphPreviewCard(
                 }
             }
 
-            if (hasGraph) {
-                KnowledgeGraph3DView(
-                    graphJson = graphJson,
-                    onNodeSelected = onNodeSelected,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                    previewHeight = 200.dp,
-                )
-            } else {
-                Text(
-                    "Your 3D graph builds as you save scans. Tap Scan to start mapping signals and places.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ScoopMuted,
-                    modifier = Modifier.padding(vertical = 8.dp),
-                )
-            }
+            KnowledgeGraphGeoTimelineView(
+                visualization = visualization,
+                filterScanId = filterScanId,
+                onFilterScanChange = onFilterScanChange,
+                onNodeSelected = onNodeSelected,
+                onLinkSelected = onLinkSelected,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(280.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                emptyMessage = "Save a scan to see your graph. Tap nodes for scan and signal details.",
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -114,7 +112,7 @@ fun KnowledgeGraphPreviewCard(
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.OpenInFull, contentDescription = null)
-                        Text("Full screen 3D")
+                        Text("Full screen")
                     }
                 }
                 OutlinedButton(

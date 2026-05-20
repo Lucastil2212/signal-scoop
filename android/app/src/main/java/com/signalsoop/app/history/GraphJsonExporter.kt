@@ -11,7 +11,7 @@ import org.json.JSONObject
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Serializes the local knowledge graph for the 3D WebView viewer. */
+/** Serializes the local knowledge graph for the map WebView viewer. */
 object GraphJsonExporter {
     fun toJson(
         nodes: List<GraphNodeEntity>,
@@ -20,66 +20,74 @@ object GraphJsonExporter {
         userNodes: List<UserGraphNodeEntity>,
         deviceLinks: List<DeviceLinkEntity>,
         evrusLinks: List<EvrusIdentityLinkEntity>,
+        scanGpsById: Map<String, Pair<Double, Double>> = emptyMap(),
     ): String {
         val aliasByKey = aliases.associateBy { it.signalKey }
+        val coordsByNodeId = buildCoordinateIndex(nodes, edges, scanGpsById)
         val jsonNodes = JSONArray()
-        val placed = mutableMapOf<String, Triple<Float, Float, Float>>()
 
-        nodes.forEachIndexed { index, node ->
-            val pos = positionFor(node, index, nodes.size, placed)
-            placed[node.id] = pos
+        nodes.forEach { node ->
             val signalKey = signalKeyFromNodeId(node.id)
             val pet = signalKey?.let { aliasByKey[it]?.petName }
-            jsonNodes.put(
+            val coord = coordsByNodeId[node.id]
+            val nodeJson =
                 JSONObject()
                     .put("id", node.id)
                     .put("label", pet ?: node.label)
                     .put("rawLabel", node.label)
                     .put("type", node.nodeType)
-                    .put("x", pos.first.toDouble())
-                    .put("y", pos.second.toDouble())
-                    .put("z", pos.third.toDouble())
                     .put("petName", pet ?: JSONObject.NULL)
-                    .put("color", colorForType(node.nodeType)),
-            )
+                    .put("color", colorForType(node.nodeType))
+            if (coord != null) {
+                nodeJson.put("lat", coord.first).put("lon", coord.second)
+            }
+            jsonNodes.put(nodeJson)
         }
 
         userNodes.forEachIndexed { index, user ->
             val id = "user:${user.id}"
-            val angle = (index + nodes.size) * 0.71f
-            val radius = 4.5f + (index % 5) * 0.35f
-            jsonNodes.put(
+            val coord =
+                user.linkedScanId?.let { scanId ->
+                    coordsByNodeId[KnowledgeGraphBuilder.scanNodeId(scanId)]
+                } ?: user.linkedSignalKey?.let { key -> coordsByNodeId["signal:$key"] }
+            val offset = offsetDegrees(index + nodes.size, 0.00018)
+            val lat = coord?.first?.plus(offset.first)
+            val lon = coord?.second?.plus(offset.second)
+            val userJson =
                 JSONObject()
                     .put("id", id)
                     .put("label", user.label)
                     .put("rawLabel", user.body.take(48))
                     .put("type", "USER")
-                    .put("x", (cos(angle) * radius).toDouble())
-                    .put("y", ((index % 7) - 3) * 0.55)
-                    .put("z", (sin(angle) * radius).toDouble())
                     .put("petName", JSONObject.NULL)
-                    .put("color", "#FFB020"),
-            )
-            user.linkedScanId?.let { scanId ->
-                edges.find { it.fromNodeId == KnowledgeGraphBuilder.scanNodeId(scanId) }
-                    ?.let { /* already linked via scan */ }
+                    .put("color", "#FFB020")
+            if (lat != null && lon != null) {
+                userJson.put("lat", lat).put("lon", lon)
             }
+            jsonNodes.put(userJson)
         }
 
         evrusLinks.forEachIndexed { index, link ->
             val id = "evrus:${link.id}"
-            jsonNodes.put(
+            val coord =
+                link.scanId?.let { scanId ->
+                    coordsByNodeId[KnowledgeGraphBuilder.scanNodeId(scanId)]
+                } ?: link.signalKey?.let { key -> coordsByNodeId["signal:$key"] }
+            val offset = offsetDegrees(index + 40, 0.00022)
+            val lat = coord?.first?.plus(offset.first)
+            val lon = coord?.second?.plus(offset.second)
+            val evrusJson =
                 JSONObject()
                     .put("id", id)
                     .put("label", link.displayName ?: link.evrusDid.take(24))
                     .put("rawLabel", link.evrusDid)
                     .put("type", "EVRUS")
-                    .put("x", (index * 0.9 - 2).toDouble())
-                    .put("y", 3.2 + index * 0.15)
-                    .put("z", (index * 0.4).toDouble())
                     .put("petName", JSONObject.NULL)
-                    .put("color", "#7B61FF"),
-            )
+                    .put("color", "#7B61FF")
+            if (lat != null && lon != null) {
+                evrusJson.put("lat", lat).put("lon", lon)
+            }
+            jsonNodes.put(evrusJson)
         }
 
         val jsonLinks = JSONArray()
@@ -137,18 +145,22 @@ object GraphJsonExporter {
 
         deviceLinks.forEachIndexed { index, link ->
             val deviceId = "device:${link.id}"
-            jsonNodes.put(
+            val coord = coordsByNodeId["signal:${link.signalKey}"]
+            val offset = offsetDegrees(index + 80, 0.00016)
+            val lat = coord?.first?.plus(offset.first)
+            val lon = coord?.second?.plus(offset.second)
+            val deviceJson =
                 JSONObject()
                     .put("id", deviceId)
                     .put("label", link.connectionLabel)
                     .put("rawLabel", link.deviceAddress)
                     .put("type", "DEVICE")
-                    .put("x", (index * 0.7).toDouble())
-                    .put("y", -2.5)
-                    .put("z", (index * 0.5 - 1).toDouble())
                     .put("petName", JSONObject.NULL)
-                    .put("color", "#FF4D6D"),
-            )
+                    .put("color", "#FF4D6D")
+            if (lat != null && lon != null) {
+                deviceJson.put("lat", lat).put("lon", lon)
+            }
+            jsonNodes.put(deviceJson)
             jsonLinks.put(
                 JSONObject()
                     .put("source", "signal:${link.signalKey}")
@@ -161,8 +173,64 @@ object GraphJsonExporter {
         return JSONObject()
             .put("nodes", jsonNodes)
             .put("links", jsonLinks)
-            .put("meta", JSONObject().put("engine", "three.js").put("localOnly", true))
+            .put("meta", JSONObject().put("engine", "leaflet").put("localOnly", true))
             .toString()
+    }
+
+    private fun buildCoordinateIndex(
+        nodes: List<GraphNodeEntity>,
+        edges: List<GraphEdgeEntity>,
+        scanGpsById: Map<String, Pair<Double, Double>>,
+    ): Map<String, Pair<Double, Double>> {
+        val coords = mutableMapOf<String, Pair<Double, Double>>()
+
+        scanGpsById.forEach { (scanId, coord) ->
+            coords[KnowledgeGraphBuilder.scanNodeId(scanId)] = coord
+        }
+
+        nodes.forEach { node ->
+            coordsFromMetadata(node.metadataJson)?.let { coords[node.id] = it }
+        }
+
+        edges
+            .filter { it.relation == KnowledgeGraphBuilder.REL_AT_PLACE }
+            .forEach { edge ->
+                coords[edge.toNodeId]?.let { placeCoord ->
+                    if (coords[edge.fromNodeId] == null) {
+                        coords[edge.fromNodeId] = placeCoord
+                    }
+                }
+            }
+
+        var signalRound = 0
+        edges
+            .filter { it.relation == KnowledgeGraphBuilder.REL_OBSERVED }
+            .forEach { edge ->
+                val scanCoord = coords[edge.fromNodeId] ?: return@forEach
+                if (coords[edge.toNodeId] != null) return@forEach
+                val offset = offsetDegrees(signalRound++, 0.00012)
+                coords[edge.toNodeId] =
+                    Pair(scanCoord.first + offset.first, scanCoord.second + offset.second)
+            }
+
+        return coords
+    }
+
+    private fun coordsFromMetadata(metadataJson: String?): Pair<Double, Double>? {
+        val meta = metadataJson?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return null
+        if (!meta.has("lat") || !meta.has("lon")) return null
+        val lat = meta.optDouble("lat")
+        val lon = meta.optDouble("lon")
+        if (lat == 0.0 && lon == 0.0) return null
+        return Pair(lat, lon)
+    }
+
+    /** Small deterministic offset (~tens of meters) so stacked nodes remain visible. */
+    private fun offsetDegrees(seed: Int, metersApprox: Double): Pair<Double, Double> {
+        val angle = seed * 2.399963f
+        val dLat = metersApprox * cos(angle)
+        val dLon = metersApprox * sin(angle)
+        return Pair(dLat, dLon)
     }
 
     private fun signalKeyFromNodeId(nodeId: String): String? =
@@ -175,34 +243,4 @@ object GraphJsonExporter {
             KnowledgeGraphBuilder.NODE_SIGNAL -> "#7AE7FF"
             else -> "#9AA3B2"
         }
-
-    private fun positionFor(
-        node: GraphNodeEntity,
-        index: Int,
-        total: Int,
-        placed: Map<String, Triple<Float, Float, Float>>,
-    ): Triple<Float, Float, Float> {
-        when (node.nodeType) {
-            KnowledgeGraphBuilder.NODE_PLACE -> {
-                val meta = node.metadataJson?.let { runCatching { JSONObject(it) }.getOrNull() }
-                val lat = meta?.optDouble("lat") ?: 0.0
-                val lon = meta?.optDouble("lon") ?: 0.0
-                return Triple(
-                    ((lon * 1000) % 8).toFloat() - 4f,
-                    0f,
-                    ((lat * 1000) % 8).toFloat() - 4f,
-                )
-            }
-            KnowledgeGraphBuilder.NODE_SCAN -> {
-                val angle = index * (6.28318f / total.coerceAtLeast(1))
-                return Triple(cos(angle) * 2.2f, (index % 5) * 0.3f - 0.6f, sin(angle) * 2.2f)
-            }
-            KnowledgeGraphBuilder.NODE_SIGNAL -> {
-                val angle = index * 0.55f + 1.2f
-                return Triple(cos(angle) * 5f, ((index % 9) - 4) * 0.25f, sin(angle) * 5f)
-            }
-        }
-        val angle = index * 0.4f
-        return Triple(cos(angle) * 3f, 0f, sin(angle) * 3f)
-    }
 }

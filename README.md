@@ -26,10 +26,10 @@ After a scan, open the **Ask** tab for summaries and analysis. Built-in queries 
 
 ### Scan history & knowledge graph
 
-Each scan is **saved on-device** with a timestamp and a **native GPS fix** (when location is enabled). The **Scan** home screen shows a **live 3D graph preview** with **Full screen 3D** and **Graph hub** shortcuts. Open the **Graph** tab for:
+Each scan is **saved on-device** with a timestamp and a **native GPS fix** (when location is enabled). The **Scan** home screen shows a **live map graph preview** with **Full screen map** and **Graph hub** shortcuts. Open the **Graph** tab for:
 
 - **Timeline** — rename, delete, expand scans; pet names per signal; photos/videos; device links
-- **3D Graph** — interactive Three.js viewer (pinch/drag) of scans, places, signals, EVRUS nodes
+- **Map + time** — native geo map (Carto dark tiles) or layout fallback; color-coded scans, signals, and places; timeline filter; tap **nodes** or **relationship lines** for detail sheets
 - **Vault** — everything collected locally (scans, aliases, media, notes, EVRUS links)
 - **PDF report** — select scans on the Timeline, then **Save PDF** or **Share** (on-device generation)
 - **Copy** — tap the copy icon on findings, risk, sentinel alerts, graph insights, and scan rows
@@ -52,7 +52,7 @@ Published by **Manticore Technologies, LLC**.
 
 After each scan, the app shows a **defense score** (0–100) and **sentinel alerts** with a protective playbook, plus a composite **risk score** from the same heuristics (unknown BLE, hidden Wi-Fi, strong RSSI). This is defensive guidance only — not forensic proof of surveillance devices. See [SECURITY.md](SECURITY.md) for mesh limits and storage boundaries.
 
-**Current release:** `1.5.1-beta` (versionCode 7) — fixed 3D graph rendering, smart labels, polished viewer.
+**Current release:** `1.6.0-beta` (versionCode 8) — native 2D knowledge graph (map + timeline, node/link details, no WebView).
 
 ## Requirements
 
@@ -121,7 +121,7 @@ source env.sh          # optional if JAVA_HOME is already configured
 
 The unsigned release APK is written to:
 
-`android/app/build/outputs/apk/release/app-release-unsigned.apk`
+`android/app/build/outputs/apk/release/app-release.apk` (unsigned unless `keystore.properties` is configured)
 
 Copy or rename it as needed. For Play Store distribution you would sign with your own keystore.
 

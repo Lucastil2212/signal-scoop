@@ -162,15 +162,58 @@ class ScanHistoryRepository(
         )
     }
 
-    suspend fun buildGraphJson(): String =
-        GraphJsonExporter.toJson(
+    private suspend fun scanGpsById(): Map<String, Pair<Double, Double>> =
+        dao.getAllScans().mapNotNull { scan ->
+            val lat = scan.latitude ?: return@mapNotNull null
+            val lon = scan.longitude ?: return@mapNotNull null
+            scan.id to Pair(lat, lon)
+        }.toMap()
+
+    suspend fun buildGraphJson(): String {
+        ensureGraphMaterialized()
+        return GraphJsonExporter.toJson(
             nodes = dao.getAllNodes(),
             edges = dao.getAllEdges(),
             aliases = dao.getAllAliases(),
             userNodes = dao.getAllUserNodes(),
             deviceLinks = dao.getAllDeviceLinks(),
             evrusLinks = dao.getAllEvrusLinks(),
+            scanGpsById = scanGpsById(),
         )
+    }
+
+    suspend fun ensureGraphMaterialized() {
+        if (dao.getAllNodes().isNotEmpty()) return
+        val scans = dao.getAllScans()
+        if (scans.isEmpty()) return
+        scans.sortedBy { it.scannedAtEpochMs }.forEach { entity ->
+            val snapshot = entity.toSnapshot()
+            val prior = priorSignalObservationCounts(excludeScanId = snapshot.id)
+            val delta = KnowledgeGraphBuilder.buildForScan(snapshot, prior)
+            if (delta.nodes.isNotEmpty()) dao.upsertNodes(delta.nodes)
+            if (delta.edges.isNotEmpty()) dao.upsertEdges(delta.edges)
+        }
+        dao.pruneOrphanNodes()
+    }
+
+    suspend fun buildVisualization(): GraphVisualization {
+        ensureGraphMaterialized()
+        val scans = dao.getAllScans()
+        val edges = dao.getAllEdges()
+        return GraphVisualizationBuilder.build(
+            nodes = dao.getAllNodes(),
+            edges = edges,
+            aliases = dao.getAllAliases(),
+            userNodes = dao.getAllUserNodes(),
+            deviceLinks = dao.getAllDeviceLinks(),
+            evrusLinks = dao.getAllEvrusLinks(),
+            scanGpsById = scanGpsById(),
+            scanEpochById = scans.associate { it.id to it.scannedAtEpochMs },
+            scanLabelsById = scans.associate { it.id to it.name },
+        )
+    }
+
+    suspend fun graphEdges(): List<GraphEdgeEntity> = dao.getAllEdges()
 
     data class VaultSnapshot(
         val scans: List<ScanSnapshot>,

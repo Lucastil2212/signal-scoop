@@ -37,7 +37,7 @@ Signal Scoop is designed as a **local, read-only radio survey** and **defensive 
 
 - **Mesh device ID:** `EncryptedSharedPreferences` (AES-256-GCM).
 - **History DB:** App-private Room (not SQLCipher; protect device with lock screen).
-- **3D graph WebView:** Asset-only `file://` URLs; file access disabled; graph JSON size-capped before injection.
+- **Map graph WebView:** Asset-only `file://` canvas viewer (no external map tiles); graph JSON size-capped before injection via Android bridge.
 
 ## Permissions
 
