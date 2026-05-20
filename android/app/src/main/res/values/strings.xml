@@ -3,4 +3,5 @@
     <string name="app_name">Signal Scoop</string>
     <string name="company_name">Manticore Technologies, LLC</string>
     <string name="license_notice">© 2026 Manticore Technologies, LLC. Licensed under the MIT License.</string>
+    <string name="product_tagline">Local signal intelligence by Manticore Technologies, LLC</string>
 </resources>

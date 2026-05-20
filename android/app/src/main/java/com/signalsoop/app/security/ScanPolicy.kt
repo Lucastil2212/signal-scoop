@@ -14,9 +14,10 @@ object ScanPolicy {
     val privacyBullets = listOf(
         "No accounts or cloud analytics. Scan results never leave your phone.",
         "Optional HTTPS download only fetches a local LLM checkpoint (.task) when you tap Download.",
-        "Ask uses an on-device model; answers are grounded in your current scan session only.",
+        "Ask uses an on-device model; answers use your current scan and local history only.",
         "Scans run only when you tap Scan, in the foreground.",
-        "Results stay in memory and are cleared when you leave the app.",
+        "Live results clear when you leave the app; saved History stays in on-device storage only.",
+        "GPS fixes use the phone’s native location stack — never sent off-device.",
         "We do not connect to, pair with, or attack nearby devices.",
         "Screenshots and recent-apps preview are blocked on the results screen.",
     )
@@ -24,6 +25,6 @@ object ScanPolicy {
     val permissionBullets = listOf(
         "Bluetooth — discover BLE and list paired devices.",
         "Wi-Fi — list nearby access points (Android may require location).",
-        "Location — required by the OS for Wi-Fi/BLE on many phones, not used for GPS tracking.",
+        "Location — OS requirement for Wi-Fi/BLE; also used for GPS coordinates when you scan.",
     )
 }

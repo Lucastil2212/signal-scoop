@@ -16,12 +16,25 @@
 | **Sensors** | Magnetometer, accelerometer, and other hardware exposed to apps |
 | **NFC** | Whether NFC hardware exists and is enabled |
 | **Ask** | Natural-language Q&A over the current scan (on-device LLM) |
+| **History** | Saved scans with GPS time/place and a local knowledge graph for trends |
 
 Signal Scoop is a **read-only survey tool**. It does not connect to networks, deauthenticate clients, fingerprint private devices, or bypass Android permissions.
 
 ### Ask (on-device assistant)
 
 After a scan, open the **Ask** tab for summaries and analysis. Built-in queries (summarize, analyze risk, counts, list BLE/Wi-Fi, etc.) answer **directly from scan data** with no model required. Open-ended questions use an optional **local** LiteRT/MediaPipe model ([cil-graph](https://github.com/contextgraph/cil-graph) android stack) — scan payloads are never uploaded.
+
+### Scan history & knowledge graph
+
+Each scan is **saved on-device** with a timestamp and a **native GPS fix** (when location is enabled). Open the **Graph** tab for:
+
+- **Timeline** — rename, delete, expand scans; pet names per signal; photos/videos; device links
+- **3D Graph** — interactive Three.js viewer (pinch/drag) of scans, places, signals, EVRUS nodes
+- **Vault** — everything collected locally (scans, aliases, media, notes, EVRUS links)
+
+**EVRUS / EVRMORE** — local connector stores identity and P2P refs; optional handoff to an installed EVRUS companion app; graph anchoring stays on-device.
+
+Published by **Manticore Technologies, LLC**.
 
 ### Risk summary
 
@@ -136,7 +149,7 @@ Signal Scoop is built for **local-only, read-only** surveying. See **[SECURITY.m
 | Control | Implementation |
 |---------|----------------|
 | No scan upload | Scan/Ask context stays on-device; HTTPS only for optional model download |
-| No persistence | Scan results live in memory only; backup/cloud transfer disabled |
+| Local history only | Saved scans + graph in app-private DB; live session clears on exit; backup disabled |
 | Minimal permissions | Bluetooth/Wi-Fi/location with `neverForLocation` where supported; legacy BT on API 26–30 |
 | User consent | Scan runs only after you grant permissions and tap Scan |
 | Screen capture | `FLAG_SECURE` on the main screen |

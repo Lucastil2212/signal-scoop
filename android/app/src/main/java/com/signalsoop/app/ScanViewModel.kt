@@ -7,9 +7,14 @@ import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.RiskScorer
 import com.signalsoop.app.model.RiskSummary
 import com.signalsoop.app.model.SignalCategory
+import com.signalsoop.app.history.ScanGeoFix
+import com.signalsoop.app.history.ScanSnapshot
+import com.signalsoop.app.scan.GpsLocationCapture
 import com.signalsoop.app.scan.ScanCoordinator
 import com.signalsoop.app.scan.ScanPermissions
 import com.signalsoop.app.security.PermissionGuard
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,12 +27,16 @@ data class ScanUiState(
     val statusMessage: String = "Tap Scan to survey nearby signals on this device.",
     val findings: List<Finding> = emptyList(),
     val riskSummary: RiskSummary? = null,
+    val lastGeoFix: ScanGeoFix? = null,
+    val lastSavedSnapshot: ScanSnapshot? = null,
     val selectedCategory: SignalCategory = SignalCategory.ALL,
     val permissionNeeded: Boolean = false,
 )
 
 class ScanViewModel(application: Application) : AndroidViewModel(application) {
+    private val app = application as SignalScoopApp
     private val coordinator = ScanCoordinator(application)
+    private val gpsCapture = GpsLocationCapture(application)
     private val _uiState = MutableStateFlow(ScanUiState())
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
     private var scanJob: Job? = null
@@ -62,20 +71,49 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     statusMessage = "Starting scan…",
                     findings = emptyList(),
                     riskSummary = null,
+                    lastGeoFix = null,
+                    lastSavedSnapshot = null,
                 )
             }
 
             try {
-                val results = coordinator.runFullScan { message ->
-                    _uiState.update { state -> state.copy(statusMessage = message) }
-                }
+                var locationJob: Deferred<ScanGeoFix?>? = null
+                locationJob =
+                    async {
+                        _uiState.update { state ->
+                            state.copy(statusMessage = "Capturing GPS fix…")
+                        }
+                        gpsCapture.capture()
+                    }
+
+                val results =
+                    coordinator.runFullScan { message ->
+                        _uiState.update { state -> state.copy(statusMessage = message) }
+                    }
+                val geoFix = locationJob.await()
                 val risk = RiskScorer.summarize(results.filter { it.category != SignalCategory.SYSTEM })
+                val saved =
+                    app.scanHistoryRepository.saveScan(
+                        findings = results,
+                        riskSummary = risk,
+                        geoFix = geoFix,
+                    )
+                val status =
+                    buildString {
+                        append("Last scan finished · ${results.size} findings")
+                        geoFix?.let { fix ->
+                            append(" · GPS ${fix.formatCoordinates()} (${fix.formatAccuracy()})")
+                        } ?: append(" · GPS unavailable (enable location for coordinates)")
+                        append(" · saved to History")
+                    }
                 _uiState.update {
                     it.copy(
                         isScanning = false,
                         findings = results,
                         riskSummary = risk,
-                        statusMessage = "Last scan finished · ${results.size} findings",
+                        lastGeoFix = geoFix,
+                        lastSavedSnapshot = saved,
+                        statusMessage = status,
                     )
                 }
             } catch (error: Exception) {
@@ -102,7 +140,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 findings = emptyList(),
                 riskSummary = null,
-                statusMessage = "Results cleared for your privacy.",
+                lastGeoFix = null,
+                lastSavedSnapshot = null,
+                statusMessage = "Live results cleared. Saved scans remain in History on this device.",
             )
         }
     }

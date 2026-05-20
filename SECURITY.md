@@ -9,7 +9,10 @@ Signal Scoop is designed as a **local, read-only radio survey** on your own phon
 
 - Request the minimum Android permissions needed to list **BLE advertisements**, **Wi-Fi scan results**, **paired Bluetooth devices**, **NFC availability**, and **on-device sensors**.
 - Run scans only when you tap **Scan** and only while the app is in the foreground.
-- Keep results in **memory** for the current session (ViewModel). We do not write scan results to disk or send them off-device.
+- Capture a **native GPS fix** at scan time (platform `LocationManager`, GPS provider) when location is enabled.
+- **Save scans locally** in an app-private Room database (findings, risk, timestamp, coordinates, user-visible name).
+- Build a **local knowledge graph** (places, recurring signals, scan links) for the History tab — never transmitted.
+- Keep the **active session** in memory; live results clear when you leave the app. Saved History remains on-device until you delete it.
 
 ## Out of scope (what we never do)
 
@@ -28,13 +31,14 @@ Signal Scoop is designed as a **local, read-only radio survey** on your own phon
 | `BLUETOOTH_SCAN` / legacy `BLUETOOTH` | Discover nearby BLE devices (API-level split). |
 | `BLUETOOTH_CONNECT` | Read paired device names (API 31+). |
 | `ACCESS_WIFI_STATE` / `CHANGE_WIFI_STATE` | Trigger OS Wi-Fi scan and read results. |
-| `ACCESS_FINE_LOCATION` | Required by Android for Wi-Fi/BLE on many OEMs (even when not used for GPS). |
+| `ACCESS_FINE_LOCATION` | Required by Android for Wi-Fi/BLE on many OEMs; also used for on-device GPS coordinates at scan time. |
 | `NEARBY_WIFI_DEVICES` | Wi-Fi scan on Android 13+ without tying scan to location when possible. |
 
-`BLUETOOTH_SCAN` and `NEARBY_WIFI_DEVICES` use `neverForLocation` where supported so we do not use Bluetooth/Wi-Fi APIs for positioning.
+`BLUETOOTH_SCAN` and `NEARBY_WIFI_DEVICES` use `neverForLocation` where supported so Bluetooth/Wi-Fi APIs are not used for positioning; GPS uses the dedicated location stack.
 
 ## Data handling
 
+- **On-device history:** `signal_scoop_scan_history.db` in app-private storage; you can rename or delete scans from History.
 - **Backup / cloud transfer:** Disabled (`allowBackup=false`, empty backup rules).
 - **Screenshots:** The main screen uses `FLAG_SECURE` so recent-apps and screenshots do not capture MAC addresses and SSIDs by default.
 - **App switcher:** Sensitive UI is cleared when the app is stopped (not merely paused).

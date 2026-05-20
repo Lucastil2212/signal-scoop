@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Chat
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Radar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.signalsoop.app.HistoryViewModel
 import com.signalsoop.app.ScanViewModel
 import com.signalsoop.app.assistant.AssistantViewModel
 import com.signalsoop.app.ui.theme.ScoopBlack
@@ -25,6 +27,7 @@ import com.signalsoop.app.ui.theme.ScoopGreen
 import com.signalsoop.app.ui.theme.ScoopMuted
 private enum class MainTab(val label: String) {
     Scan("Scan"),
+    History("Graph"),
     Ask("Ask"),
 }
 
@@ -36,6 +39,7 @@ fun MainShell(
 ) {
     val scanState by scanViewModel.uiState.collectAsState()
     val assistantViewModel: AssistantViewModel = viewModel()
+    val historyViewModel: HistoryViewModel = viewModel()
     var tab by remember { mutableStateOf(MainTab.Scan) }
 
     Scaffold(
@@ -50,6 +54,7 @@ fun MainShell(
                             Icon(
                                 when (dest) {
                                     MainTab.Scan -> Icons.Rounded.Radar
+                                    MainTab.History -> Icons.Rounded.History
                                     MainTab.Ask -> Icons.Rounded.Chat
                                 },
                                 contentDescription = dest.label,
@@ -73,6 +78,11 @@ fun MainShell(
                     onRequestPermissions = onRequestPermissions,
                     modifier = Modifier.padding(padding),
                     showBottomScanBar = false,
+                )
+            MainTab.History ->
+                KnowledgeHubScreen(
+                    viewModel = historyViewModel,
+                    modifier = Modifier.padding(padding),
                 )
             MainTab.Ask ->
                 AssistantScreen(

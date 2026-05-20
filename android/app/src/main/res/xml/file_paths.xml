@@ -6,4 +6,7 @@
     <files-path
         name="internal_models"
         path="models/" />
+    <files-path
+        name="graph_media"
+        path="graph_media/" />
 </paths>

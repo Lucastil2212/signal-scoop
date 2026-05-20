@@ -231,11 +231,13 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
                 if (scanState.findings.isEmpty()) {
                     error("Run a scan first so the assistant has signal data to reference.")
                 }
+                val historyInsights = app.scanHistoryRepository.buildInsights()
                 val response =
                     app.scanAssistant.respond(
                         question = question,
                         findings = scanState.findings,
                         riskSummary = scanState.riskSummary,
+                        historyInsights = historyInsights,
                     )
                 response
             }.onSuccess { response ->

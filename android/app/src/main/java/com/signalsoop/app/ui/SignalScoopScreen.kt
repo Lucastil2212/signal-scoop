@@ -45,6 +45,7 @@ import com.signalsoop.app.ScanUiState
 import com.signalsoop.app.ScanViewModel
 import com.signalsoop.app.ui.components.FindingCard
 import com.signalsoop.app.ui.components.RiskCard
+import com.signalsoop.app.ui.components.ManticoreFooter
 import com.signalsoop.app.ui.components.SecurityInfoCard
 import com.signalsoop.app.model.SignalCategory
 import com.signalsoop.app.ui.theme.ScoopBlack
@@ -154,6 +155,8 @@ fun SignalScoopScreen(
             items(filtered, key = { it.id }) { finding ->
                 FindingCard(finding = finding)
             }
+
+            item { ManticoreFooter() }
 
             if (!showBottomScanBar) {
                 item {

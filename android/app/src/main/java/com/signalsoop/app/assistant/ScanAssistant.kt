@@ -1,5 +1,7 @@
 package com.signalsoop.app.assistant
 
+import com.signalsoop.app.history.HistoryQueryEngine
+import com.signalsoop.app.history.KnowledgeGraphInsights
 import com.signalsoop.app.llm.MpLlmInference
 import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.RiskSummary
@@ -21,9 +23,16 @@ class ScanAssistant(
         question: String,
         findings: List<Finding>,
         riskSummary: RiskSummary?,
+        historyInsights: KnowledgeGraphInsights? = null,
     ): AssistantAnswer {
         val analytics = ScanAnalytics.from(findings, riskSummary)
         val intent = QueryClassifier.classify(question)
+
+        historyInsights?.let { insights ->
+            HistoryQueryEngine.tryAnswer(question, insights)?.let { local ->
+                return AssistantAnswer(local.trim(), AnswerSource.LOCAL)
+            }
+        }
 
         ScanQueryEngine.tryAnswer(intent, analytics)?.let { local ->
             return AssistantAnswer(local.trim(), AnswerSource.LOCAL)

@@ -31,6 +31,7 @@ object ScanQueryEngine {
         |• How many BLE or Wi-Fi devices?
         |• List unknown BLE or hidden Wi-Fi
         |• Strongest signals / paired Bluetooth / NFC
+        |• History / trends / recurring signals (saved scans)
         |
         |Load a .task model for free-form follow-up questions.
         """.trimMargin()
