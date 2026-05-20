@@ -67,7 +67,6 @@ fun SignalScoopScreen(
     onOpenGraphFullscreen: () -> Unit,
     onOpenGraphTab: () -> Unit,
     modifier: Modifier = Modifier,
-    showBottomScanBar: Boolean = true,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val historyState by historyViewModel.uiState.collectAsState()
@@ -96,16 +95,6 @@ fun SignalScoopScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = ScoopBlack),
             )
         },
-        bottomBar = {
-            if (showBottomScanBar) {
-                ScanBottomBar(
-                    uiState = uiState,
-                    onScanClick = {
-                        if (uiState.permissionNeeded) onRequestPermissions() else onScanClick()
-                    },
-                )
-            }
-        },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -114,6 +103,15 @@ fun SignalScoopScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item {
+                ScanActionButton(
+                    uiState = uiState,
+                    onScanClick = {
+                        if (uiState.permissionNeeded) onRequestPermissions() else onScanClick()
+                    },
+                )
+            }
+
             item {
                 HeroHeader()
             }
@@ -134,6 +132,7 @@ fun SignalScoopScreen(
                     onOpenGraphTab = onOpenGraphTab,
                     onNodeSelected = historyViewModel::onGraphNodeSelected,
                     onLinkSelected = historyViewModel::onGraphLinkSelected,
+                    onOpenScanDetail = historyViewModel::openScanDetail,
                 )
             }
 
@@ -184,20 +183,6 @@ fun SignalScoopScreen(
             }
 
             item { ManticoreFooter() }
-
-            if (!showBottomScanBar) {
-                item {
-                    ScanActionButton(
-                        uiState = uiState,
-                        onScanClick = {
-                            if (uiState.permissionNeeded) onRequestPermissions() else onScanClick()
-                        },
-                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
-                    )
-                }
-            } else {
-                item { Spacer(Modifier.height(88.dp)) }
-            }
         }
     }
 }
@@ -323,20 +308,5 @@ private fun EmptyState() {
             color = ScoopMuted,
             textAlign = TextAlign.Center,
         )
-    }
-}
-
-@Composable
-private fun ScanBottomBar(
-    uiState: ScanUiState,
-    onScanClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ScanActionButton(uiState = uiState, onScanClick = onScanClick)
     }
 }

@@ -42,6 +42,7 @@ fun KnowledgeGraphPreviewCard(
     onOpenGraphTab: () -> Unit,
     onNodeSelected: (nodeId: String, nodeType: String, label: String) -> Unit,
     onLinkSelected: (sourceId: String, targetId: String, relation: String) -> Unit,
+    onOpenScanDetail: (scanId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hasGraph = visualization?.nodes?.isNotEmpty() == true
@@ -88,12 +89,13 @@ fun KnowledgeGraphPreviewCard(
                 onFilterScanChange = onFilterScanChange,
                 onNodeSelected = onNodeSelected,
                 onLinkSelected = onLinkSelected,
+                onOpenScanDetail = onOpenScanDetail,
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .height(280.dp)
                         .clip(RoundedCornerShape(12.dp)),
-                emptyMessage = "Save a scan to see your graph. Tap nodes for scan and signal details.",
+                emptyMessage = "Save a scan to see your graph. Tap a past scan, node, or line for details.",
             )
 
             Row(

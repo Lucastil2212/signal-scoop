@@ -55,6 +55,7 @@ fun GraphDetailSheet(
     viewModel: HistoryViewModel,
     uiState: com.signalsoop.app.HistoryUiState,
     onDismiss: () -> Unit,
+    onOpenScanDetail: (scanId: String) -> Unit,
     onOpenTimelineForScan: (scanId: String) -> Unit,
 ) {
     if (nodeId == null && link == null) return
@@ -88,9 +89,9 @@ fun GraphDetailSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (link != null && viz != null) {
-                linkDetailItems(link, viz, viewModel, uiState, onDismiss, onOpenTimelineForScan)
+                linkDetailItems(link, viz, viewModel, uiState, onDismiss, onOpenScanDetail, onOpenTimelineForScan)
             } else if (nodeId != null) {
-                nodeDetailItems(nodeId, viz, viewModel, uiState, onDismiss, onOpenTimelineForScan)
+                nodeDetailItems(nodeId, viz, viewModel, uiState, onDismiss, onOpenScanDetail)
             }
             item {
                 TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
@@ -107,6 +108,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.linkDetailItems(
     viewModel: HistoryViewModel,
     uiState: com.signalsoop.app.HistoryUiState,
     onDismiss: () -> Unit,
+    onOpenScanDetail: (scanId: String) -> Unit,
     onOpenTimelineForScan: (scanId: String) -> Unit,
 ) {
     val source = viz.nodes.find { it.id == link.sourceId }
@@ -165,7 +167,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.linkDetailItems(
             Button(
                 onClick = {
                     onDismiss()
-                    onOpenTimelineForScan(scanId)
+                    onOpenScanDetail(scanId)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -174,7 +176,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.linkDetailItems(
                         contentColor = ScoopBlack,
                     ),
             ) {
-                Text("Open linked scan in Timeline")
+                Text("View all signals from linked scan")
             }
         }
     }
@@ -186,7 +188,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.nodeDetailItems(
     viewModel: HistoryViewModel,
     uiState: com.signalsoop.app.HistoryUiState,
     onDismiss: () -> Unit,
-    onOpenTimelineForScan: (scanId: String) -> Unit,
+    onOpenScanDetail: (scanId: String) -> Unit,
 ) {
     val node = viz?.nodes?.find { it.id == nodeId }
     val scanId = viewModel.scanIdFromGraphNode(nodeId)
@@ -221,42 +223,29 @@ private fun androidx.compose.foundation.lazy.LazyListScope.nodeDetailItems(
     when {
         scanId != null -> {
             val snapshot = viewModel.snapshotForScan(scanId)
+            val count = viewModel.radioFindingsForScan(scanId).size
             item { ScanSummaryBlock(snapshot) }
-            if (snapshot != null) {
-                item {
-                    Button(
-                        onClick = {
-                            onDismiss()
-                            onOpenTimelineForScan(scanId)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = ScoopGreen,
-                                contentColor = ScoopBlack,
-                            ),
-                    ) {
-                        Text("Open full scan in Timeline")
-                    }
-                }
-                val signals = viewModel.radioFindingsForScan(scanId)
-                item {
-                    Text(
-                        "Signals in this scan (${signals.size})",
-                        color = ScoopWhite,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                }
-                items(signals.take(40), key = { "${scanId}-${it.id}" }) { finding ->
-                    SignalDetailBlock(
-                        finding = finding,
-                        petName = signalKeyFrom(finding)?.let { key -> viewModel.aliasForKey(key, uiState.vault) },
-                        onPetName = {
-                            signalKeyFrom(finding)?.let { key ->
-                                viewModel.beginAlias(key, viewModel.aliasForKey(key, uiState.vault))
-                            }
-                        },
-                    )
+            item {
+                Text(
+                    "This dot is a saved scan session on the map. Open it to browse every BLE, Wi-Fi, and Bluetooth signal detected in that run.",
+                    color = ScoopMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            item {
+                Button(
+                    onClick = {
+                        onDismiss()
+                        onOpenScanDetail(scanId)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = ScoopGreen,
+                            contentColor = ScoopBlack,
+                        ),
+                ) {
+                    Text("View all $count signals from this scan")
                 }
             }
         }
@@ -289,7 +278,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.nodeDetailItems(
                         TextButton(
                             onClick = {
                                 onDismiss()
-                                onOpenTimelineForScan(id)
+                                onOpenScanDetail(id)
                             },
                         ) {
                             Text("View scan: ${snap.name}", color = ScoopGreen)
@@ -309,7 +298,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.nodeDetailItems(
                 TextButton(
                     onClick = {
                         onDismiss()
-                        onOpenTimelineForScan(id)
+                        onOpenScanDetail(id)
                     },
                 ) {
                     Text(snap?.name ?: id, color = ScoopGreen)

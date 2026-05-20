@@ -59,16 +59,27 @@ fun MainShell(
         return
     }
 
+    ScanDetailSheet(
+        scanId = historyState.scanDetailScanId,
+        viewModel = historyViewModel,
+        uiState = historyState,
+        onDismiss = historyViewModel::dismissScanDetail,
+    )
+
     GraphDetailSheet(
         nodeId = historyState.graphDetailNodeId,
         link = historyState.graphDetailLink,
         viewModel = historyViewModel,
         uiState = historyState,
         onDismiss = historyViewModel::dismissGraphDetail,
+        onOpenScanDetail = { scanId ->
+            historyViewModel.dismissGraphDetail()
+            historyViewModel.openScanDetail(scanId)
+        },
         onOpenTimelineForScan = { scanId ->
             historyViewModel.dismissGraphDetail()
             tab = MainTab.Graph
-            historyViewModel.selectScan(scanId)
+            historyViewModel.openScanDetail(scanId)
         },
     )
 
@@ -111,7 +122,6 @@ fun MainShell(
                     onOpenGraphFullscreen = { graphFullscreen = true },
                     onOpenGraphTab = { tab = MainTab.Graph },
                     modifier = Modifier.padding(padding),
-                    showBottomScanBar = false,
                 )
             MainTab.Graph ->
                 KnowledgeHubScreen(

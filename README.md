@@ -28,7 +28,7 @@ After a scan, open the **Ask** tab for summaries and analysis. Built-in queries 
 
 Each scan is **saved on-device** with a timestamp and a **native GPS fix** (when location is enabled). The **Scan** home screen shows a **live map graph preview** with **Full screen map** and **Graph hub** shortcuts. Open the **Graph** tab for:
 
-- **Timeline** — rename, delete, expand scans; pet names per signal; photos/videos; device links
+- **Timeline** — tap a scan card to open every BLE, Wi-Fi, and Bluetooth signal from that session; rename, delete, PDF export, pet names, photos/videos
 - **Map + time** — native geo map (Carto dark tiles) or layout fallback; color-coded scans, signals, and places; timeline filter; tap **nodes** or **relationship lines** for detail sheets
 - **Vault** — everything collected locally (scans, aliases, media, notes, EVRUS links)
 - **PDF report** — select scans on the Timeline, then **Save PDF** or **Share** (on-device generation)
@@ -52,7 +52,7 @@ Published by **Manticore Technologies, LLC**.
 
 After each scan, the app shows a **defense score** (0–100) and **sentinel alerts** with a protective playbook, plus a composite **risk score** from the same heuristics (unknown BLE, hidden Wi-Fi, strong RSSI). This is defensive guidance only — not forensic proof of surveillance devices. See [SECURITY.md](SECURITY.md) for mesh limits and storage boundaries.
 
-**Current release:** `1.6.0-beta` (versionCode 8) — native 2D knowledge graph (map + timeline, node/link details, no WebView).
+**Current release:** `1.6.1-beta` (versionCode 9) — tap any saved scan to view all signals; scan button at top of home screen.
 
 ## Requirements
 

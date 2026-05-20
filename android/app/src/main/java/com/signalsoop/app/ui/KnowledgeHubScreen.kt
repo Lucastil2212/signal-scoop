@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Checkbox
@@ -128,7 +129,7 @@ fun KnowledgeHubScreen(
                     Column {
                         Text("Knowledge", color = ScoopWhite)
                         Text(
-                            "Scans · map graph · local vault",
+                            "Tap a scan to see its signals · map · vault",
                             style = MaterialTheme.typography.bodySmall,
                             color = ScoopMuted,
                         )
@@ -219,6 +220,7 @@ fun KnowledgeHubScreen(
                         onFilterScanChange = viewModel::setGraphTimelineFilter,
                         onNodeSelected = viewModel::onGraphNodeSelected,
                         onLinkSelected = viewModel::onGraphLinkSelected,
+                        onOpenScanDetail = viewModel::openScanDetail,
                         modifier = Modifier.weight(1f).fillMaxSize(),
                         emptyMessage =
                             "Save a scan on the Scan tab, then return here. Tap nodes or lines for details.",
@@ -350,82 +352,36 @@ private fun TimelineTab(
         uiState.insights?.let { insights ->
             item { GraphInsightsCard(insights) }
         }
+        item { TimelineHelpCard() }
         item {
             FilledTonalButton(
                 onClick = { viewModel.beginAddNote(null) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Rounded.Add, contentDescription = null)
-                Text("  Add observation to graph")
+                Text("  Add a note to your graph")
             }
         }
         if (uiState.snapshots.isEmpty()) {
             item {
                 Text(
-                    "No saved scans yet. Scan on the Scan tab — each run saves GPS, signals, and graph links.",
+                    "No saved scans yet. On the Scan tab, tap Scan nearby signals — each run is saved here with GPS, BLE, Wi-Fi, and Bluetooth results.",
                     color = ScoopMuted,
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
         uiState.snapshots.forEach { snapshot ->
-            val expanded = uiState.selectedScanId == snapshot.id
             item(key = "card-${snapshot.id}") {
                 ScanHistoryCard(
                     snapshot = snapshot,
-                    expanded = expanded,
                     selectedForReport = snapshot.id in uiState.reportSelectedIds,
                     onReportToggle = { viewModel.toggleReportSelection(snapshot.id) },
-                    onToggle = { viewModel.selectScan(if (expanded) null else snapshot.id) },
+                    onOpen = { viewModel.openScanDetail(snapshot.id) },
                     onRename = { viewModel.beginRename(snapshot.id, snapshot.name) },
                     onDelete = { viewModel.deleteScan(snapshot.id) },
                     onAddNote = { viewModel.beginAddNote(snapshot.id) },
                 )
-            }
-            if (expanded) {
-                item(key = "media-${snapshot.id}") {
-                    MediaActionsRow(
-                        scanId = snapshot.id,
-                        signalKey = null,
-                        viewModel = viewModel,
-                    )
-                }
-                snapshot.riskSummary?.let { risk ->
-                    item(key = "risk-${snapshot.id}") { RiskCard(summary = risk) }
-                }
-                val radio =
-                    snapshot.findings.filter {
-                        it.category != SignalCategory.SYSTEM && it.category != SignalCategory.SENSORS
-                    }
-                items(radio.take(40), key = { "${snapshot.id}-${it.id}" }) { finding ->
-                    SignalFindingRow(
-                        finding = finding,
-                        petName = signalKeyFrom(finding)?.let { key ->
-                            viewModel.aliasForKey(key, uiState.vault)
-                        },
-                        onPetName = {
-                            signalKeyFrom(finding)?.let { key ->
-                                viewModel.beginAlias(key, viewModel.aliasForKey(key, uiState.vault))
-                            }
-                        },
-                        onLinkDevice = {
-                            signalKeyFrom(finding)?.let { key ->
-                                addressFrom(finding)?.let { addr ->
-                                    viewModel.linkDevice(key, addr, finding.title)
-                                }
-                            }
-                        },
-                        onEvrus = {
-                            signalKeyFrom(finding)?.let { key ->
-                                viewModel.linkEvrus(
-                                    key,
-                                    viewModel.aliasForKey(key, uiState.vault) ?: finding.title,
-                                    snapshot.id,
-                                )
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -511,7 +467,7 @@ private fun VaultTab(
 }
 
 @Composable
-private fun MediaActionsRow(
+internal fun MediaActionsRow(
     scanId: String?,
     signalKey: String?,
     viewModel: HistoryViewModel,
@@ -626,9 +582,14 @@ private fun ReportSelectionBar(
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "PDF report · $selectedCount of $totalScans selected",
+                "PDF report — check scans below, then save or share",
                 color = ScoopWhite,
                 style = MaterialTheme.typography.labelLarge,
+            )
+            Text(
+                "$selectedCount of $totalScans selected",
+                color = ScoopMuted,
+                style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onSelectAll) { Text("All") }
@@ -695,12 +656,25 @@ private fun GraphInsightsCard(insights: KnowledgeGraphInsights) {
 }
 
 @Composable
+private fun TimelineHelpCard() {
+    Surface(shape = RoundedCornerShape(12.dp), color = ScoopSurfaceHigh, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Your scan history", color = ScoopWhite, style = MaterialTheme.typography.titleSmall)
+            Text(
+                "Each card is one survey you ran on the Scan tab. Tap a card to open every BLE, Wi-Fi, and Bluetooth signal from that session. Use the checkbox for PDF reports.",
+                color = ScoopMuted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ScanHistoryCard(
     snapshot: ScanSnapshot,
-    expanded: Boolean,
     selectedForReport: Boolean,
     onReportToggle: () -> Unit,
-    onToggle: () -> Unit,
+    onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onAddNote: () -> Unit,
@@ -709,54 +683,79 @@ private fun ScanHistoryCard(
     val time = SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.getDefault()).format(Date(snapshot.scannedAtEpochMs))
     val geoLine = snapshot.geoFix?.let { "GPS ${it.formatCoordinates()} · ${it.formatAccuracy()}" }
     val riskLine = snapshot.riskSummary?.let { "${it.level.label} ${it.score}/100" }
+    val radio =
+        snapshot.findings.filter {
+            it.category != SignalCategory.SYSTEM && it.category != SignalCategory.SENSORS
+        }
+    val ble = radio.count { it.category == SignalCategory.BLE }
+    val wifi = radio.count { it.category == SignalCategory.WIFI }
+    val bt = radio.count { it.category == SignalCategory.BLUETOOTH }
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = ScoopSurfaceHigh,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
     ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = selectedForReport,
                     onCheckedChange = { onReportToggle() },
                     colors = CheckboxDefaults.colors(checkedColor = ScoopGreen),
                 )
-                Text(
-                    snapshot.name,
-                    color = ScoopWhite,
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f).clickable(onClick = onToggle),
-                )
-                CopyIconButton(
-                    label = "scan",
-                    value =
-                        buildString {
-                            append(snapshot.name)
-                            append('\n')
-                            append(time)
-                            geoLine?.let { append('\n').append(it) }
-                            riskLine?.let { append("\nRisk: ").append(it) }
-                            append("\nFindings: ${snapshot.findings.size}")
-                        },
-                )
-                IconButton(onClick = onRename) { Icon(Icons.Rounded.Edit, null, tint = ScoopMuted) }
-                IconButton(onClick = onDelete) { Icon(Icons.Rounded.Delete, null, tint = ScoopMuted) }
+                Column(Modifier.weight(1f)) {
+                    Text(snapshot.name, color = ScoopWhite, style = MaterialTheme.typography.titleSmall)
+                    Text(time, color = ScoopMuted, style = MaterialTheme.typography.bodySmall)
+                }
+                Icon(Icons.Rounded.ChevronRight, contentDescription = "View signals", tint = ScoopGreen)
             }
-            Text(time, color = ScoopMuted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.clickable(onClick = onToggle))
+            Text(
+                "Tap to view · $ble BLE · $wifi Wi-Fi · $bt Bluetooth",
+                color = ScoopGreen,
+                style = MaterialTheme.typography.labelMedium,
+            )
             geoLine?.let {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(it, color = ScoopGreen, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    Text(it, color = ScoopMuted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     IconButton(onClick = { ClipboardUtil.copy(context, "GPS", it) }) {
                         Icon(Icons.Rounded.ContentCopy, null, tint = ScoopMuted)
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onAddNote) {
-                    Icon(Icons.Rounded.Add, null, modifier = Modifier.height(16.dp))
-                    Text("Note")
+            riskLine?.let {
+                Text("Risk: $it", color = ScoopMuted, style = MaterialTheme.typography.bodySmall)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = onAddNote) {
+                        Icon(Icons.Rounded.Add, null, modifier = Modifier.height(16.dp))
+                        Text("Note")
+                    }
+                    TextButton(onClick = onRename) {
+                        Icon(Icons.Rounded.Edit, null, modifier = Modifier.height(16.dp))
+                        Text("Rename")
+                    }
                 }
-                Text("${snapshot.findings.size} findings", color = ScoopMuted, style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    CopyIconButton(
+                        label = "scan",
+                        value =
+                            buildString {
+                                append(snapshot.name)
+                                append('\n')
+                                append(time)
+                                geoLine?.let { line -> append('\n').append(line) }
+                                riskLine?.let { line -> append("\nRisk: ").append(line) }
+                                append("\nSignals: $ble BLE, $wifi Wi-Fi, $bt Bluetooth")
+                            },
+                    )
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Rounded.Delete, contentDescription = "Delete scan", tint = ScoopMuted)
+                    }
+                }
             }
         }
     }

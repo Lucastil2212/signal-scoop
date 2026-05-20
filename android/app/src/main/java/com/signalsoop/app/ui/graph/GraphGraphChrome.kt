@@ -55,7 +55,7 @@ fun GraphGraphChrome(
                 style = MaterialTheme.typography.labelMedium,
             )
             Text(
-                "Tap nodes or lines for details",
+                "Tap a scan below, a node, or a line for details",
                 color = ScoopMuted,
                 style = MaterialTheme.typography.labelSmall,
             )

@@ -33,6 +33,7 @@ data class HistoryUiState(
     val graphVisualization: GraphVisualization? = null,
     val graphEdges: List<GraphEdgeEntity> = emptyList(),
     val selectedScanId: String? = null,
+    val scanDetailScanId: String? = null,
     val selectedGraphNode: String? = null,
     val graphDetailNodeId: String? = null,
     val graphDetailLink: GraphLinkSelection? = null,
@@ -107,7 +108,29 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it.copy(selectedScanId = id) }
     }
 
+    fun openScanDetail(scanId: String) {
+        val name = snapshotForScan(scanId)?.name ?: "Scan"
+        val count = radioFindingsForScan(scanId).size
+        _uiState.update {
+            it.copy(
+                scanDetailScanId = scanId,
+                selectedScanId = scanId,
+                graphFilterScanId = scanId,
+                statusMessage = "Viewing saved scan: $name ($count signals)",
+            )
+        }
+    }
+
+    fun dismissScanDetail() {
+        _uiState.update { it.copy(scanDetailScanId = null) }
+    }
+
     fun onGraphNodeSelected(nodeId: String, nodeType: String, label: String) {
+        scanIdFromGraphNode(nodeId)?.let { scanId ->
+            openScanDetail(scanId)
+            _uiState.update { it.copy(selectedGraphNode = nodeId, graphDetailNodeId = null, graphDetailLink = null) }
+            return
+        }
         _uiState.update {
             it.copy(
                 selectedGraphNode = nodeId,
@@ -132,6 +155,10 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun openGraphNodeDetail(nodeId: String) {
+        scanIdFromGraphNode(nodeId)?.let {
+            openScanDetail(it)
+            return
+        }
         val label = _uiState.value.graphVisualization?.nodes?.find { it.id == nodeId }?.label ?: nodeId
         onGraphNodeSelected(nodeId, "", label)
     }
@@ -148,7 +175,12 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun setGraphTimelineFilter(scanId: String?) {
-        _uiState.update { it.copy(graphFilterScanId = scanId) }
+        _uiState.update {
+            it.copy(
+                graphFilterScanId = scanId,
+                scanDetailScanId = if (scanId == null) null else it.scanDetailScanId,
+            )
+        }
     }
 
     fun scanIdFromGraphNode(nodeId: String): String? =
@@ -222,6 +254,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             _uiState.update {
                 it.copy(
                     selectedScanId = if (it.selectedScanId == id) null else it.selectedScanId,
+                    scanDetailScanId = if (it.scanDetailScanId == id) null else it.scanDetailScanId,
                     statusMessage = "Scan removed from local history.",
                 )
             }

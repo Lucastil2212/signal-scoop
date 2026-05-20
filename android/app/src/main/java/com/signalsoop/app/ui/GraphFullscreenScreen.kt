@@ -33,17 +33,28 @@ fun GraphFullscreenScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    ScanDetailSheet(
+        scanId = uiState.scanDetailScanId,
+        viewModel = viewModel,
+        uiState = uiState,
+        onDismiss = viewModel::dismissScanDetail,
+    )
+
     GraphDetailSheet(
         nodeId = uiState.graphDetailNodeId,
         link = uiState.graphDetailLink,
         viewModel = viewModel,
         uiState = uiState,
         onDismiss = viewModel::dismissGraphDetail,
+        onOpenScanDetail = { scanId ->
+            viewModel.dismissGraphDetail()
+            viewModel.openScanDetail(scanId)
+        },
         onOpenTimelineForScan = {
             viewModel.dismissGraphDetail()
             onDismiss()
             onOpenGraphTab()
-            viewModel.selectScan(it)
+            viewModel.openScanDetail(it)
         },
     )
 
@@ -75,6 +86,7 @@ fun GraphFullscreenScreen(
             onFilterScanChange = viewModel::setGraphTimelineFilter,
             onNodeSelected = viewModel::onGraphNodeSelected,
             onLinkSelected = viewModel::onGraphLinkSelected,
+            onOpenScanDetail = viewModel::openScanDetail,
             modifier =
                 Modifier
                     .fillMaxSize()
