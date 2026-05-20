@@ -17,6 +17,7 @@
 # Room (scan history — on-device only)
 -keep class com.signalsoop.app.history.db.** { *; }
 -keep class com.signalsoop.app.evr.** { *; }
+-keep class com.signalsoop.app.mesh.** { *; }
 
 # 3D graph WebView bridge
 -keepclassmembers class com.signalsoop.app.ui.KnowledgeGraph3DView$* {
