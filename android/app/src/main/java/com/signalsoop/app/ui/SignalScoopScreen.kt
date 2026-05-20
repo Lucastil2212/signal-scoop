@@ -106,9 +106,7 @@ fun SignalScoopScreen(
             item {
                 ScanActionButton(
                     uiState = uiState,
-                    onScanClick = {
-                        if (uiState.permissionNeeded) onRequestPermissions() else onScanClick()
-                    },
+                    onScanClick = onScanClick,
                 )
             }
 

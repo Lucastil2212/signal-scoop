@@ -24,7 +24,9 @@ class MainActivity : ComponentActivity() {
             requestingPermissions = false
             viewModel.refreshPermissionState()
             if (results.isNotEmpty() && results.values.all { it }) {
-                viewModel.startScan()
+                viewModel.startScan(onNeedPermissions = { requestPermissionsThenScan() })
+            } else if (results.isNotEmpty()) {
+                viewModel.onPermissionsDenied()
             }
         }
 
@@ -45,7 +47,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     MainShell(
                         scanViewModel = viewModel,
-                        onScanClick = { viewModel.startScan() },
+                        onScanClick = { viewModel.startScan(onNeedPermissions = { requestPermissionsThenScan() }) },
                         onRequestPermissions = { requestPermissionsThenScan() },
                     )
                 }
@@ -66,7 +68,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        viewModel.clearSensitiveResults()
+        if (!isChangingConfigurations) {
+            viewModel.clearSensitiveResults()
+        }
         super.onDestroy()
     }
 

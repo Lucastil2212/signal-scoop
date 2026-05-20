@@ -6,7 +6,7 @@
   <img src="SIGNAL%20SCOOP%20LOGO.png" alt="Signal Scoop logo" width="220" />
 </p>
 
-**Current release:** `1.7.2-beta` (versionCode 13)
+**Current release:** `1.7.3-beta` (versionCode 14)
 
 ## What it detects
 
