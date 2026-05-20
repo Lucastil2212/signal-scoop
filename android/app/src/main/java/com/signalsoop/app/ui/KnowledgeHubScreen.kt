@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,7 +24,13 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -58,9 +65,11 @@ import com.signalsoop.app.history.KnowledgeGraphInsights
 import com.signalsoop.app.history.ScanSnapshot
 import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.SignalCategory
+import com.signalsoop.app.ui.components.CopyIconButton
 import com.signalsoop.app.ui.components.FindingCard
 import com.signalsoop.app.ui.components.ManticoreFooter
 import com.signalsoop.app.ui.components.RiskCard
+import com.signalsoop.app.ui.util.ClipboardUtil
 import com.signalsoop.app.ui.theme.ScoopBlack
 import com.signalsoop.app.ui.theme.ScoopBlue
 import com.signalsoop.app.ui.theme.ScoopGreen
@@ -82,11 +91,29 @@ private enum class HubTab(val label: String) {
 @Composable
 fun KnowledgeHubScreen(
     viewModel: HistoryViewModel,
+    onOpenGraphFullscreen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var hubTab by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
+
+    val savePdfLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+            if (uri != null) {
+                viewModel.generateReportPdf(
+                    onReady = { file ->
+                        context.contentResolver.openOutputStream(uri)?.use { out ->
+                            file.inputStream().use { it.copyTo(out) }
+                        }
+                    },
+                    onError = { },
+                )
+            }
+        }
+
+    val sharePdfLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
 
     Dialogs(viewModel = viewModel, uiState = uiState)
 
@@ -142,6 +169,39 @@ fun KnowledgeHubScreen(
                 color = ScoopMuted,
             )
 
+            ReportSelectionBar(
+                selectedCount = uiState.reportSelectedIds.size,
+                totalScans = uiState.snapshots.size,
+                generating = uiState.reportGenerating,
+                onSelectAll = viewModel::selectAllForReport,
+                onClear = viewModel::clearReportSelection,
+                onSavePdf = {
+                    savePdfLauncher.launch("signal-scoop-report-${System.currentTimeMillis()}.pdf")
+                },
+                onSharePdf = {
+                    viewModel.generateReportPdf(
+                        onReady = { file ->
+                            val uri =
+                                FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    file,
+                                )
+                            val intent =
+                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "application/pdf"
+                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                            sharePdfLauncher.launch(
+                                android.content.Intent.createChooser(intent, "Share PDF report"),
+                            )
+                        },
+                        onError = { },
+                    )
+                },
+            )
+
             when (HubTab.entries[hubTab]) {
                 HubTab.Timeline ->
                     TimelineTab(
@@ -173,13 +233,21 @@ fun KnowledgeHubScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             FilledTonalButton(
+                                onClick = onOpenGraphFullscreen,
+                                modifier = Modifier.weight(1f),
+                                enabled = uiState.graphJson.length > 20,
+                            ) {
+                                Icon(Icons.Rounded.OpenInFull, contentDescription = null)
+                                Text(" Full screen")
+                            }
+                            FilledTonalButton(
                                 onClick = { viewModel.refreshGraphAndInsights() },
                                 modifier = Modifier.weight(1f),
                             ) { Text("Refresh") }
                             FilledTonalButton(
                                 onClick = { viewModel.anchorGraphToEvrmore() },
                                 modifier = Modifier.weight(1f),
-                            ) { Text("EVRMORE anchor") }
+                            ) { Text("Anchor") }
                         }
                     }
                 HubTab.Vault ->
@@ -302,6 +370,8 @@ private fun TimelineTab(
                 ScanHistoryCard(
                     snapshot = snapshot,
                     expanded = expanded,
+                    selectedForReport = snapshot.id in uiState.reportSelectedIds,
+                    onReportToggle = { viewModel.toggleReportSelection(snapshot.id) },
                     onToggle = { viewModel.selectScan(if (expanded) null else snapshot.id) },
                     onRename = { viewModel.beginRename(snapshot.id, snapshot.name) },
                     onDelete = { viewModel.deleteScan(snapshot.id) },
@@ -536,12 +606,77 @@ private fun VaultStatCard(title: String, value: String, subtitle: String) {
 }
 
 @Composable
+private fun ReportSelectionBar(
+    selectedCount: Int,
+    totalScans: Int,
+    generating: Boolean,
+    onSelectAll: () -> Unit,
+    onClear: () -> Unit,
+    onSavePdf: () -> Unit,
+    onSharePdf: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = ScoopSurfaceHigh,
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "PDF report · $selectedCount of $totalScans selected",
+                color = ScoopWhite,
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onSelectAll) { Text("All") }
+                TextButton(onClick = onClear) { Text("Clear") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onSavePdf,
+                    enabled = selectedCount > 0 && !generating,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = ScoopGreen, contentColor = ScoopBlack),
+                ) {
+                    if (generating) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Rounded.Description, contentDescription = null)
+                        Text(" Save PDF")
+                    }
+                }
+                FilledTonalButton(
+                    onClick = onSharePdf,
+                    enabled = selectedCount > 0 && !generating,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Share")
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun GraphInsightsCard(insights: KnowledgeGraphInsights) {
     Surface(shape = RoundedCornerShape(16.dp), color = ScoopSurfaceHigh, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Rounded.Hub, contentDescription = null, tint = ScoopGreen)
-                Text("Graph insights", style = MaterialTheme.typography.titleSmall, color = ScoopGreen)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Rounded.Hub, contentDescription = null, tint = ScoopGreen)
+                    Text("Graph insights", style = MaterialTheme.typography.titleSmall, color = ScoopGreen)
+                }
+                CopyIconButton(
+                    label = "graph insights",
+                    value =
+                        buildString {
+                            append("${insights.totalScans} scans · ${insights.scansWithGps} GPS · ${insights.uniquePlaces} places\n")
+                            insights.recurringSignals.forEach { append("• ${it.label} (${it.scanCount}×)\n") }
+                        },
+                )
             }
             Text(
                 "${insights.totalScans} scans · ${insights.scansWithGps} GPS · ${insights.uniquePlaces} places",
@@ -559,26 +694,58 @@ private fun GraphInsightsCard(insights: KnowledgeGraphInsights) {
 private fun ScanHistoryCard(
     snapshot: ScanSnapshot,
     expanded: Boolean,
+    selectedForReport: Boolean,
+    onReportToggle: () -> Unit,
     onToggle: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onAddNote: () -> Unit,
 ) {
+    val context = LocalContext.current
     val time = SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.getDefault()).format(Date(snapshot.scannedAtEpochMs))
+    val geoLine = snapshot.geoFix?.let { "GPS ${it.formatCoordinates()} · ${it.formatAccuracy()}" }
+    val riskLine = snapshot.riskSummary?.let { "${it.level.label} ${it.score}/100" }
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = ScoopSurfaceHigh,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(snapshot.name, color = ScoopWhite, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = selectedForReport,
+                    onCheckedChange = { onReportToggle() },
+                    colors = CheckboxDefaults.colors(checkedColor = ScoopGreen),
+                )
+                Text(
+                    snapshot.name,
+                    color = ScoopWhite,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f).clickable(onClick = onToggle),
+                )
+                CopyIconButton(
+                    label = "scan",
+                    value =
+                        buildString {
+                            append(snapshot.name)
+                            append('\n')
+                            append(time)
+                            geoLine?.let { append('\n').append(it) }
+                            riskLine?.let { append("\nRisk: ").append(it) }
+                            append("\nFindings: ${snapshot.findings.size}")
+                        },
+                )
                 IconButton(onClick = onRename) { Icon(Icons.Rounded.Edit, null, tint = ScoopMuted) }
                 IconButton(onClick = onDelete) { Icon(Icons.Rounded.Delete, null, tint = ScoopMuted) }
             }
-            Text(time, color = ScoopMuted, style = MaterialTheme.typography.bodySmall)
-            snapshot.geoFix?.let {
-                Text("GPS ${it.formatCoordinates()} · ${it.formatAccuracy()}", color = ScoopGreen, style = MaterialTheme.typography.bodySmall)
+            Text(time, color = ScoopMuted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.clickable(onClick = onToggle))
+            geoLine?.let {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(it, color = ScoopGreen, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { ClipboardUtil.copy(context, "GPS", it) }) {
+                        Icon(Icons.Rounded.ContentCopy, null, tint = ScoopMuted)
+                    }
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onAddNote) {

@@ -203,8 +203,18 @@
     renderer.render(scene, camera);
   }
 
+  function loadFromAndroid() {
+    try {
+      if (window.GraphPayload && window.GraphPayload.getGraphPayload) {
+        var raw = window.GraphPayload.getGraphPayload();
+        if (raw && raw.length > 2) loadGraph(raw);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
   window.GraphViewer = {
     load: loadGraph,
+    loadFromAndroid: loadFromAndroid,
     resetCamera: function () {
       orbitTheta = 0; orbitPhi = 0.35; orbitRadius = 12; updateCamera();
     },

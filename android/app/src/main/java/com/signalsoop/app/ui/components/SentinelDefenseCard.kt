@@ -39,16 +39,32 @@ fun SentinelDefenseCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Rounded.Shield, contentDescription = null, tint = ScoopGreen)
-                Text("Defense sentinel", style = MaterialTheme.typography.titleMedium, color = ScoopWhite)
-                Text(
-                    "${report.defenseScore}/100 · ${report.postureLabel}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = postureColor(report.defenseScore),
-                    modifier = Modifier.padding(start = 4.dp),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Rounded.Shield, contentDescription = null, tint = ScoopGreen)
+                    Text("Defense sentinel", style = MaterialTheme.typography.titleMedium, color = ScoopWhite)
+                    Text(
+                        "${report.defenseScore}/100 · ${report.postureLabel}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = postureColor(report.defenseScore),
+                    )
+                }
+                CopyIconButton(
+                    label = "defense sentinel",
+                    value =
+                        buildString {
+                            append("Defense ${report.defenseScore}/100 · ${report.postureLabel}\n")
+                            report.alerts.forEach { a ->
+                                append("${a.title}: ${a.detail}\n→ ${a.action}\n")
+                            }
+                            report.playbook.forEach { append("• $it\n") }
+                        },
                 )
             }
             report.alerts.take(4).forEach { alert ->

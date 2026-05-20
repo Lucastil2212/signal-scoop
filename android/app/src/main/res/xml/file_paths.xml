@@ -12,4 +12,7 @@
     <files-path
         name="mesh_exports"
         path="mesh_exports/" />
+    <files-path
+        name="reports"
+        path="reports/" />
 </paths>

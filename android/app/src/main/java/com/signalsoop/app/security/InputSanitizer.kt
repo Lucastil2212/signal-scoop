@@ -28,9 +28,12 @@ object InputSanitizer {
     }
 
     fun graphJsonForWebView(json: String): String? {
-        if (json.length > MAX_GRAPH_JSON_CHARS) return null
-        if (json.count { it == '{' } != json.count { it == '}' }) return null
-        return json
+        if (json.isBlank() || json.length > MAX_GRAPH_JSON_CHARS) return null
+        return runCatching {
+            val root = org.json.JSONObject(json)
+            if (!root.has("nodes") || !root.has("links")) return null
+            json
+        }.getOrNull()
     }
 
     fun wireJson(bytes: ByteArray): String? {

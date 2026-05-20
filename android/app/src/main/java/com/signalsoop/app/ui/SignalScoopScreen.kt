@@ -41,8 +41,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.signalsoop.app.R
+import com.signalsoop.app.HistoryViewModel
 import com.signalsoop.app.ScanUiState
 import com.signalsoop.app.ScanViewModel
+import com.signalsoop.app.ui.components.KnowledgeGraphPreviewCard
 import com.signalsoop.app.ui.components.FindingCard
 import com.signalsoop.app.ui.components.RiskCard
 import com.signalsoop.app.ui.components.ManticoreFooter
@@ -59,12 +61,17 @@ import com.signalsoop.app.ui.theme.ScoopWhite
 @Composable
 fun SignalScoopScreen(
     viewModel: ScanViewModel,
+    historyViewModel: HistoryViewModel,
     onScanClick: () -> Unit,
     onRequestPermissions: () -> Unit,
+    onOpenGraphFullscreen: () -> Unit,
+    onOpenGraphTab: () -> Unit,
     modifier: Modifier = Modifier,
     showBottomScanBar: Boolean = true,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val historyState by historyViewModel.uiState.collectAsState()
+    val insights = historyState.insights
     val filtered = if (uiState.selectedCategory == SignalCategory.ALL) {
         uiState.findings
     } else {
@@ -113,6 +120,18 @@ fun SignalScoopScreen(
 
             item {
                 SecurityInfoCard()
+            }
+
+            item {
+                KnowledgeGraphPreviewCard(
+                    graphJson = historyState.graphJson,
+                    scanCount = insights?.totalScans ?: historyState.snapshots.size,
+                    placeCount = insights?.uniquePlaces ?: 0,
+                    signalCount = insights?.recurringSignals?.size ?: 0,
+                    onOpenFullscreen = onOpenGraphFullscreen,
+                    onOpenGraphTab = onOpenGraphTab,
+                    onNodeSelected = historyViewModel::onGraphNodeSelected,
+                )
             }
 
             item {

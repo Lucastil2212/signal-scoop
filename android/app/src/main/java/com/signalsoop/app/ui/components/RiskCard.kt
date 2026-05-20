@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -60,11 +61,23 @@ fun RiskCard(summary: RiskSummary, modifier: Modifier = Modifier) {
                     color = accent,
                 )
             }
-            Text(
-                "${summary.score}/100",
-                style = MaterialTheme.typography.titleLarge,
-                color = ScoopWhite,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${summary.score}/100",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = ScoopWhite,
+                )
+                CopyIconButton(
+                    label = "risk summary",
+                    value =
+                        buildString {
+                            append("${summary.level.label} ${summary.score}/100\n")
+                            append(summary.level.description)
+                            append('\n')
+                            summary.highlights.forEach { append("• $it\n") }
+                        },
+                )
+            }
         }
 
         LinearProgressIndicator(

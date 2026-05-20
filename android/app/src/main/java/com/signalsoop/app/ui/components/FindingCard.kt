@@ -43,11 +43,23 @@ fun FindingCard(finding: Finding, modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CategoryChip(finding.category)
-                finding.signalStrength?.let { rssi ->
-                    Text(
-                        "$rssi dBm",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = ScoopGreen,
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    finding.signalStrength?.let { rssi ->
+                        Text(
+                            "$rssi dBm",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = ScoopGreen,
+                        )
+                    }
+                    CopyIconButton(
+                        label = finding.category.label,
+                        value =
+                            buildString {
+                                append(finding.title)
+                                append('\n')
+                                append(finding.detail)
+                                finding.signalStrength?.let { append("\n$it dBm") }
+                            },
                     )
                 }
             }

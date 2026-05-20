@@ -27,10 +27,11 @@ import com.signalsoop.app.assistant.AssistantViewModel
 import com.signalsoop.app.ui.theme.ScoopBlack
 import com.signalsoop.app.ui.theme.ScoopGreen
 import com.signalsoop.app.ui.theme.ScoopMuted
+
 private enum class MainTab(val label: String) {
     Scan("Scan"),
+    Graph("Graph"),
     Connect("Connect"),
-    History("Graph"),
     Ask("Ask"),
 }
 
@@ -44,7 +45,20 @@ fun MainShell(
     val assistantViewModel: AssistantViewModel = viewModel()
     val historyViewModel: HistoryViewModel = viewModel()
     val meshViewModel: MeshViewModel = viewModel()
+    val historyState by historyViewModel.uiState.collectAsState()
     var tab by remember { mutableStateOf(MainTab.Scan) }
+    var graphFullscreen by remember { mutableStateOf(false) }
+
+    if (graphFullscreen) {
+        GraphFullscreenScreen(
+            viewModel = historyViewModel,
+            graphJson = historyState.graphJson,
+            statusMessage = historyState.statusMessage,
+            onDismiss = { graphFullscreen = false },
+            modifier = Modifier.fillMaxSize(),
+        )
+        return
+    }
 
     Scaffold(
         containerColor = ScoopBlack,
@@ -58,8 +72,8 @@ fun MainShell(
                             Icon(
                                 when (dest) {
                                     MainTab.Scan -> Icons.Rounded.Radar
+                                    MainTab.Graph -> Icons.Rounded.History
                                     MainTab.Connect -> Icons.Rounded.Hub
-                                    MainTab.History -> Icons.Rounded.History
                                     MainTab.Ask -> Icons.Rounded.Chat
                                 },
                                 contentDescription = dest.label,
@@ -79,19 +93,23 @@ fun MainShell(
             MainTab.Scan ->
                 SignalScoopScreen(
                     viewModel = scanViewModel,
+                    historyViewModel = historyViewModel,
                     onScanClick = onScanClick,
                     onRequestPermissions = onRequestPermissions,
+                    onOpenGraphFullscreen = { graphFullscreen = true },
+                    onOpenGraphTab = { tab = MainTab.Graph },
                     modifier = Modifier.padding(padding),
                     showBottomScanBar = false,
+                )
+            MainTab.Graph ->
+                KnowledgeHubScreen(
+                    viewModel = historyViewModel,
+                    onOpenGraphFullscreen = { graphFullscreen = true },
+                    modifier = Modifier.padding(padding),
                 )
             MainTab.Connect ->
                 ConnectHomeScreen(
                     meshViewModel = meshViewModel,
-                    modifier = Modifier.padding(padding),
-                )
-            MainTab.History ->
-                KnowledgeHubScreen(
-                    viewModel = historyViewModel,
                     modifier = Modifier.padding(padding),
                 )
             MainTab.Ask ->

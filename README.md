@@ -26,11 +26,13 @@ After a scan, open the **Ask** tab for summaries and analysis. Built-in queries 
 
 ### Scan history & knowledge graph
 
-Each scan is **saved on-device** with a timestamp and a **native GPS fix** (when location is enabled). Open the **Graph** tab for:
+Each scan is **saved on-device** with a timestamp and a **native GPS fix** (when location is enabled). The **Scan** home screen shows a **live 3D graph preview** with **Full screen 3D** and **Graph hub** shortcuts. Open the **Graph** tab for:
 
 - **Timeline** — rename, delete, expand scans; pet names per signal; photos/videos; device links
 - **3D Graph** — interactive Three.js viewer (pinch/drag) of scans, places, signals, EVRUS nodes
 - **Vault** — everything collected locally (scans, aliases, media, notes, EVRUS links)
+- **PDF report** — select scans on the Timeline, then **Save PDF** or **Share** (on-device generation)
+- **Copy** — tap the copy icon on findings, risk, sentinel alerts, graph insights, and scan rows
 
 **EVRUS / EVRMORE** — local connector stores identity and P2P refs; optional handoff to an installed EVRUS companion app; graph anchoring stays on-device.
 
@@ -50,7 +52,7 @@ Published by **Manticore Technologies, LLC**.
 
 After each scan, the app shows a **defense score** (0–100) and **sentinel alerts** with a protective playbook, plus a composite **risk score** from the same heuristics (unknown BLE, hidden Wi-Fi, strong RSSI). This is defensive guidance only — not forensic proof of surveillance devices. See [SECURITY.md](SECURITY.md) for mesh limits and storage boundaries.
 
-**Current release:** `1.4.0-beta` (versionCode 5).
+**Current release:** `1.5.0-beta` (versionCode 6) — home graph preview, full-screen 3D, copy-anywhere, PDF reports.
 
 ## Requirements
 

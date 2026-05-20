@@ -7,6 +7,7 @@ import com.signalsoop.app.evr.EvrusConnector
 import com.signalsoop.app.evr.LocalEvrusConnector
 import com.signalsoop.app.history.KnowledgeGraphInsights
 import com.signalsoop.app.history.ScanHistoryRepository
+import com.signalsoop.app.history.ScanReportPdfGenerator
 import com.signalsoop.app.history.ScanSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,6 +35,8 @@ data class HistoryUiState(
     val addNoteBody: String = "",
     val statusMessage: String = "Your knowledge graph stays on this device.",
     val evrusCompanionAvailable: Boolean = false,
+    val reportSelectedIds: Set<String> = emptySet(),
+    val reportGenerating: Boolean = false,
 )
 
 class HistoryViewModel(application: Application) : AndroidViewModel(application) {
@@ -276,4 +279,57 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
 
     fun aliasForKey(key: String, vault: ScanHistoryRepository.VaultSnapshot?): String? =
         vault?.aliases?.find { it.signalKey == key }?.petName
+
+    fun toggleReportSelection(scanId: String) {
+        _uiState.update { state ->
+            val next =
+                if (scanId in state.reportSelectedIds) {
+                    state.reportSelectedIds - scanId
+                } else {
+                    state.reportSelectedIds + scanId
+                }
+            state.copy(reportSelectedIds = next)
+        }
+    }
+
+    fun selectAllForReport() {
+        _uiState.update {
+            it.copy(reportSelectedIds = it.snapshots.map { s -> s.id }.toSet())
+        }
+    }
+
+    fun clearReportSelection() {
+        _uiState.update { it.copy(reportSelectedIds = emptySet()) }
+    }
+
+    fun generateReportPdf(onReady: (java.io.File) -> Unit, onError: (String) -> Unit) {
+        val ids = _uiState.value.reportSelectedIds
+        if (ids.isEmpty()) {
+            onError("Select at least one scan for the report.")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(reportGenerating = true) }
+            runCatching {
+                val selected = _uiState.value.snapshots.filter { it.id in ids }
+                ScanReportPdfGenerator.write(getApplication(), selected, _uiState.value.insights)
+            }.onSuccess { file ->
+                _uiState.update {
+                    it.copy(
+                        reportGenerating = false,
+                        statusMessage = "PDF report ready · ${file.name}",
+                    )
+                }
+                onReady(file)
+            }.onFailure { err ->
+                _uiState.update {
+                    it.copy(
+                        reportGenerating = false,
+                        statusMessage = err.message ?: "PDF export failed",
+                    )
+                }
+                onError(err.message ?: "PDF export failed")
+            }
+        }
+    }
 }
