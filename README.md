@@ -53,7 +53,7 @@ Local mesh only (no cloud): **Messages**, **Voice mesh**, **Mesh radio** — see
 
 ### Ask tab
 
-Built-in queries use scan data directly. Open-ended chat uses an optional **local** model ([cil-graph](https://github.com/contextgraph/cil-graph) stack). Nothing is uploaded.
+Built-in queries use scan data directly. Open-ended chat uses an optional **local** model (MediaPipe LiteRT `.task` bundles) with a **Context Integration Layer** that layers the current scan plus on-device knowledge-graph history into the prompt. Nothing is uploaded.
 
 ## Features in detail
 

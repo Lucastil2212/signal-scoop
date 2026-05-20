@@ -25,9 +25,9 @@ object QueryClassifier {
         if (matchesAny(q, "help", "what can you", "what do you", "commands", "examples")) {
             return QueryIntent.HELP
         }
-        if (matchesAny(q, "nfc")) return QueryIntent.NFC
+        if (containsWord(q, "nfc")) return QueryIntent.NFC
 
-        if (matchesAny(q, "how many ble", "count ble", "number of ble", "ble devices", "ble count")) {
+        if (matchesAny(q, "how many ble", "count ble", "number of ble", "ble count")) {
             return QueryIntent.COUNT_BLE
         }
         if (matchesAny(q, "how many wi", "how many wifi", "count wi", "wifi networks", "wi-fi count")) {
@@ -59,17 +59,12 @@ object QueryClassifier {
         if (matchesAny(q, "analyze", "analysis", "assess", "evaluate", "concern", "worried", "safe")) {
             return QueryIntent.ANALYZE
         }
-        if (matchesAny(
-                q,
-                "summarize",
-                "summary",
-                "overview",
-                "recap",
-                "what did",
-                "what was found",
-                "what did you find",
-                "tell me about the scan",
-            )
+        if (
+            containsWord(q, "summarize") ||
+            containsWord(q, "summary") ||
+            containsWord(q, "overview") ||
+            containsWord(q, "recap") ||
+            matchesAny(q, "what did you find", "what was found", "tell me about the scan")
         ) {
             return QueryIntent.SUMMARY
         }
@@ -79,4 +74,7 @@ object QueryClassifier {
 
     private fun matchesAny(text: String, vararg needles: String): Boolean =
         needles.any { text.contains(it) }
+
+    private fun containsWord(text: String, word: String): Boolean =
+        Regex("\\b${Regex.escape(word)}\\b").containsMatchIn(text)
 }

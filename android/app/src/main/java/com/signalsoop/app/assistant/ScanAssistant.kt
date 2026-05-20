@@ -2,6 +2,7 @@ package com.signalsoop.app.assistant
 
 import com.signalsoop.app.history.HistoryQueryEngine
 import com.signalsoop.app.history.KnowledgeGraphInsights
+import com.signalsoop.app.history.KnowledgeGraphInsightsEngine
 import com.signalsoop.app.llm.MpLlmInference
 import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.RiskSummary
@@ -14,7 +15,8 @@ data class AssistantAnswer(
 )
 
 /**
- * Hybrid assistant: structured scan data for reliable basics; on-device LLM for open questions.
+ * Hybrid assistant: structured scan/graph data for reliable basics; on-device LLM for open
+ * questions with [ContextIntegrationLayer] (current scan + knowledge graph).
  */
 class ScanAssistant(
     private val llm: MpLlmInference,
@@ -40,11 +42,7 @@ class ScanAssistant(
 
         if (!llm.isLoaded()) {
             return AssistantAnswer(
-                buildString {
-                    appendLine(ScanQueryEngine.fallbackSummary(analytics))
-                    appendLine()
-                    append("For custom questions, load a .task model (Pick model or Download .task).")
-                },
+                noModelAnswer(question, intent, analytics, historyInsights),
                 AnswerSource.LOCAL,
             )
         }
@@ -56,32 +54,61 @@ class ScanAssistant(
                     findings = findings,
                     riskSummary = riskSummary,
                     analytics = analytics,
-                    taskHint = inferTaskHint(question),
+                    historyInsights = historyInsights,
+                    taskHint = inferTaskHint(question, intent),
                 )
             AssistantAnswer(text.trim(), AnswerSource.LLM)
         } catch (err: Throwable) {
             AssistantAnswer(
                 buildString {
-                    appendLine(ScanQueryEngine.fallbackSummary(analytics))
+                    appendLine(noModelAnswer(question, QueryIntent.GENERAL, analytics, historyInsights))
                     appendLine()
                     appendLine("(On-device model failed: ${err.message ?: "error"})")
-                    append("Try SmolLM-135M, a shorter question, or “summarize scan”.")
+                    append("Try SmolLM-135M, a shorter question, or a built-in command like “how many BLE devices?”.")
                 },
                 AnswerSource.LOCAL,
             )
         }
     }
 
-    private fun inferTaskHint(question: String): String {
+    private fun noModelAnswer(
+        question: String,
+        intent: QueryIntent,
+        analytics: ScanAnalytics,
+        historyInsights: KnowledgeGraphInsights?,
+    ): String =
+        when (intent) {
+            QueryIntent.SUMMARY -> ScanQueryEngine.buildSummary(analytics)
+            QueryIntent.ANALYZE -> ScanQueryEngine.buildAnalysis(analytics)
+            else ->
+                buildString {
+                    appendLine("That question needs an on-device .task model, or try a built-in command.")
+                    appendLine()
+                    append(ScanQueryEngine.helpText())
+                    historyInsights?.takeIf { it.totalScans > 0 }?.let { insights ->
+                        appendLine()
+                        appendLine("Knowledge graph snapshot:")
+                        append(KnowledgeGraphInsightsEngine.formatDigest(insights).trimEnd())
+                    }
+                    appendLine()
+                    append("Your question: \"${question.trim()}\"")
+                }
+        }
+
+    private fun inferTaskHint(question: String, intent: QueryIntent): String {
         val q = question.lowercase()
         return when {
-            q.contains("summar") -> "Summarize this scan in 3-6 bullet points."
-            q.contains("analy") || q.contains("assess") -> "Analyze what the scan suggests; note limits of passive survey."
+            intent == QueryIntent.SUMMARY || q.contains("summar") ->
+                "Summarize this scan in 3-6 bullet points."
+            intent == QueryIntent.ANALYZE || q.contains("analy") || q.contains("assess") ->
+                "Analyze what the scan suggests; note limits of passive survey."
             q.contains("risk") || q.contains("danger") || q.contains("safe") ->
                 "Explain the risk score and main concerns in plain language."
             q.contains("explain") -> "Explain for a non-expert using only these facts."
-            q.contains("compare") || q.contains("versus") -> "Compare categories (BLE vs Wi-Fi etc.) from the facts."
-            else -> "Answer the question using only the scan facts. Be concise; use bullet points if listing devices."
+            q.contains("compare") || q.contains("versus") || q.contains("recurring") || q.contains("history") ->
+                "Use knowledge-graph history and current scan facts; compare across scans when relevant."
+            else ->
+                "Answer only the question asked. Do not output a full scan summary unless explicitly requested."
         }
     }
 }

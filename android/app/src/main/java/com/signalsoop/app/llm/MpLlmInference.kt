@@ -5,6 +5,7 @@ import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 import com.signalsoop.app.assistant.SignalContextBuilder
+import com.signalsoop.app.history.KnowledgeGraphInsights
 import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.RiskSummary
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +55,7 @@ class MpLlmInference {
         findings: List<Finding>,
         riskSummary: RiskSummary?,
         analytics: com.signalsoop.app.assistant.ScanAnalytics,
+        historyInsights: KnowledgeGraphInsights? = null,
         taskHint: String = "Answer using only the scan facts. Be concise.",
     ): String =
         withContext(Dispatchers.IO) {
@@ -74,8 +76,8 @@ class MpLlmInference {
                     SignalContextBuilder.buildWithinTokenBudget(
                         question = question,
                         findings = findings,
-                        riskSummary = riskSummary,
                         analytics = analytics,
+                        historyInsights = historyInsights,
                         taskHint = taskHint,
                         countTokens = session::sizeInTokens,
                         maxInputTokens = maxInputTokens,

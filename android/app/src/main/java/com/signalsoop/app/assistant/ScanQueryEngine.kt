@@ -7,8 +7,8 @@ object ScanQueryEngine {
     fun tryAnswer(intent: QueryIntent, analytics: ScanAnalytics): String? =
         when (intent) {
             QueryIntent.HELP -> helpText()
-            QueryIntent.SUMMARY -> buildSummary(analytics)
-            QueryIntent.ANALYZE -> buildAnalysis(analytics)
+            QueryIntent.SUMMARY -> buildSummaryBody(analytics)
+            QueryIntent.ANALYZE -> buildAnalysisBody(analytics)
             QueryIntent.COUNT_BLE -> countLine("BLE devices", analytics.bleCount)
             QueryIntent.COUNT_WIFI -> countLine("Wi-Fi networks", analytics.wifiCount)
             QueryIntent.COUNT_BLUETOOTH -> countLine("paired Bluetooth devices", analytics.bluetoothCount)
@@ -22,9 +22,13 @@ object ScanQueryEngine {
             QueryIntent.GENERAL -> null
         }
 
-    fun fallbackSummary(analytics: ScanAnalytics): String = buildSummary(analytics)
+    fun fallbackSummary(analytics: ScanAnalytics): String = buildSummaryBody(analytics)
 
-    private fun helpText(): String =
+    fun buildSummary(analytics: ScanAnalytics): String = buildSummaryBody(analytics)
+
+    fun buildAnalysis(analytics: ScanAnalytics): String = buildAnalysisBody(analytics)
+
+    fun helpText(): String =
         """
         |You can ask (no model required for most):
         |• Summarize / analyze the scan
@@ -36,7 +40,7 @@ object ScanQueryEngine {
         |Load a .task model for free-form follow-up questions.
         """.trimMargin()
 
-    private fun buildSummary(analytics: ScanAnalytics): String = buildString {
+    private fun buildSummaryBody(analytics: ScanAnalytics): String = buildString {
         appendLine("Scan summary (${analytics.totalFindings} findings)")
         appendLine()
         appendLine(analytics.formatDigest().trimEnd())
@@ -50,7 +54,7 @@ object ScanQueryEngine {
         }
     }
 
-    private fun buildAnalysis(analytics: ScanAnalytics): String = buildString {
+    private fun buildAnalysisBody(analytics: ScanAnalytics): String = buildString {
         val risk = analytics.riskSummary
         appendLine("Scan analysis")
         appendLine()
