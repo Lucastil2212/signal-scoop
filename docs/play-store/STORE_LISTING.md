@@ -1,47 +1,55 @@
 # Google Play store listing (copy-paste)
 
+**App version for screenshots:** 1.6.2-beta
+
 ## App name
 
 Signal Scoop
 
 ## Short description (80 chars max)
 
-Scan nearby BLE, Wi-Fi & Bluetooth locally. No accounts. Privacy-first signal survey.
+Scan BLE, Wi-Fi & Bluetooth locally. Saved history, map graph. No cloud.
 
 ## Full description (4000 chars max)
 
-Signal Scoop is a privacy-first Android tool that surveys **local wireless signals** around your phone — in one tap.
+Signal Scoop is a privacy-first Android **defensive sentinel** that surveys **local wireless signals** around your phone — in one tap.
 
 **What it scans**
-• Bluetooth Low Energy (BLE) devices nearby  
+• Bluetooth Low Energy (BLE) nearby  
 • Wi-Fi access points and hotspots  
-• Bluetooth devices already paired with your phone  
+• Paired Bluetooth devices  
 • NFC availability  
-• On-device sensors (magnetometer, accelerometer, etc.)
+• On-device sensors  
 
-**What makes it different**
-• **No accounts** — open the app and scan  
-• **No cloud** — results stay on your phone  
-• **No internet permission** — the app does not connect to our servers  
-• **Risk summary** — simple 0–100 score from nearby-signal heuristics (guidance only)
+**What you get**
+• **Risk & sentinel alerts** — heuristic guidance (not forensic proof)  
+• **Saved scan history** — every run stored on your phone with time and GPS when enabled  
+• **Knowledge graph** — map of scans, signals, and places; tap for details  
+• **Scan detail** — all BLE, Wi-Fi, and Bluetooth hits from any past scan  
+• **PDF reports** — select scans and save or share  
+• **Ask β** — on-device Q&A over your scan (optional local model)  
+• **Connect** — optional encrypted local mesh (messages, voice, LAN peers)  
+
+**Privacy**
+• **No accounts**  
+• **No upload** of scan results to our servers  
+• History and graph stay **on your phone** until you delete them  
 
 **Important**
-Signal Scoop is a **read-only survey tool**. It does not connect to networks, hack devices, or bypass Android security. It cannot detect hidden cameras or microphones that are not transmitting radio signals.
+Read-only survey tool. Does not hack networks or detect non-radio hidden cameras. Android may require **location permission** for Wi-Fi/BLE — used per OS rules and optional GPS on saved scans.
 
-Android may require **location permission** for Wi-Fi/BLE scans — that is an OS rule, not GPS tracking by us.
+**Permissions**
+Bluetooth, Wi-Fi, and location are used when you tap Scan or open the map — in the foreground.
 
-**Permissions explained**
-Bluetooth and Wi-Fi permissions are used only when you tap Scan, in the foreground.
-
-Paid app — one-time purchase, no subscriptions.
+One-time paid app — no subscription required for core scanning.
 
 ## Category
 
 Tools
 
-## Tags (if available)
+## Tags
 
-bluetooth scanner, wifi scanner, ble scanner, network scanner, privacy, security tool
+bluetooth scanner, wifi scanner, ble scanner, network scanner, privacy, security tool, signal survey
 
 ## Developer / legal name
 
@@ -57,5 +65,6 @@ https://github.com/YOUR_USER/signal-scoop
 
 ## Privacy policy URL
 
-https://YOUR_USER.github.io/signal-scoop/privacy-policy.html  
-*(or your own domain — must be HTTPS)*
+https://YOUR_USER.github.io/signal-scoop/docs/privacy-policy.html
+
+(Or host `docs/privacy-policy.html` at any public HTTPS URL.)

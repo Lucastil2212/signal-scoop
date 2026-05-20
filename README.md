@@ -6,6 +6,8 @@
   <img src="SIGNAL%20SCOOP%20LOGO.png" alt="Signal Scoop logo" width="220" />
 </p>
 
+**Current release:** `1.6.2-beta` (versionCode 10)
+
 ## What it detects
 
 | Source | What you see |
@@ -16,166 +18,173 @@
 | **Sensors** | Magnetometer, accelerometer, and other hardware exposed to apps |
 | **NFC** | Whether NFC hardware exists and is enabled |
 | **Ask** | Natural-language Q&A over the current scan (on-device LLM) |
-| **History** | Saved scans with GPS time/place and a local knowledge graph for trends |
+| **Knowledge** | Saved scans, local graph map, vault (aliases, media, notes) |
 
 Signal Scoop is a **read-only survey tool**. It does not connect to networks, deauthenticate clients, fingerprint private devices, or bypass Android permissions.
 
-### Ask (on-device assistant)
+## How to use the app
 
-After a scan, open the **Ask** tab for summaries and analysis. Built-in queries (summarize, analyze risk, counts, list BLE/Wi-Fi, etc.) answer **directly from scan data** with no model required. Open-ended questions use an optional **local** LiteRT/MediaPipe model ([cil-graph](https://github.com/contextgraph/cil-graph) android stack) — scan payloads are never uploaded.
+Bottom navigation has four tabs. Everything is labeled in the UI — you should not need external docs for day-to-day use.
 
-### Scan history & knowledge graph
+### Scan tab (home)
 
-Each scan is **saved on-device** with a timestamp and a **native GPS fix** (when location is enabled). The **Scan** home screen shows a **live map graph preview** with **Full screen map** and **Graph hub** shortcuts. Open the **Graph** tab for:
+1. Tap **Scan nearby signals** at the top (grant permissions when prompted).
+2. Review **risk**, **sentinel alerts**, and the **findings** list; filter by BLE / Wi-Fi / Bluetooth / sensors / NFC.
+3. Scroll to **Knowledge graph** — tap the card or mini map for **full-screen map**, or **Open Map tab** for the Graph hub.
+4. **Ask β** tab is for questions about the **current** scan only.
 
-- **Timeline** — tap a scan card to open every BLE, Wi-Fi, and Bluetooth signal from that session; rename, delete, PDF export, pet names, photos/videos
-- **Map + time** — native geo map (Carto dark tiles) or layout fallback; color-coded scans, signals, and places; timeline filter; tap **nodes** or **relationship lines** for detail sheets
-- **Vault** — everything collected locally (scans, aliases, media, notes, EVRUS links)
-- **PDF report** — select scans on the Timeline, then **Save PDF** or **Share** (on-device generation)
-- **Copy** — tap the copy icon on findings, risk, sentinel alerts, graph insights, and scan rows
+Each scan you run is **saved automatically** with time and GPS (when location is on).
 
-**EVRUS / EVRMORE** — local connector stores identity and P2P refs; optional handoff to an installed EVRUS companion app; graph anchoring stays on-device.
+### Graph tab (Knowledge hub)
 
-### Connect (local mesh)
+Three sub-tabs:
 
-The **Connect** tab is an iPhone-style home screen for device-to-device comms over **local radio** (Wi-Fi NSD + TCP mesh, BLE discovery via scan links):
+| Sub-tab | What you do |
+|---------|-------------|
+| **Scans** | **Graph insights** → tap to open **full-screen map**. Tap any **scan card** → bottom sheet with **all signals** (filter BLE / Wi-Fi / BT). Checkboxes + **Save PDF** / **Share** for reports. |
+| **Map** | Geo map (Carto dark tiles) or layout fallback when no GPS. **Past scans** strip: tap a chip to filter the map and open that scan’s signals. Tap **nodes** or **lines** for details. **↗** in the top bar = full screen. |
+| **Vault** | Counts and lists for scans, pet names, media, notes, EVRUS links — all on-device. |
 
-- **Messages** — EVRUS-compatible **X3DH + Double Ratchet** (ChaCha20-Poly1305) text only; inbox exportable as `.txt`
-- **Voice mesh** — realtime PCM frames over the same local mesh (LoRa-style, no cloud)
-- **Mesh radio** — discover peers on the same LAN and open an encrypted session
+Top bar **↗** (when a graph exists) opens full-screen map from any sub-tab.
 
-Crypto and wire format align with [evrus-v0](https://github.com/contextgraph/cil-graph) `packages/messaging`; transport follows the peer-weave actor-plane pattern (local streams, no internet relay).
+### Connect tab
 
-Published by **Manticore Technologies, LLC**.
+Local mesh only (no cloud): **Messages**, **Voice mesh**, **Mesh radio** — see [SECURITY.md](SECURITY.md).
+
+### Ask tab
+
+Built-in queries use scan data directly. Open-ended chat uses an optional **local** model ([cil-graph](https://github.com/contextgraph/cil-graph) stack). Nothing is uploaded.
+
+## Features in detail
 
 ### Defense sentinel & risk summary
 
-After each scan, the app shows a **defense score** (0–100) and **sentinel alerts** with a protective playbook, plus a composite **risk score** from the same heuristics (unknown BLE, hidden Wi-Fi, strong RSSI). This is defensive guidance only — not forensic proof of surveillance devices. See [SECURITY.md](SECURITY.md) for mesh limits and storage boundaries.
+After each scan: **defense score** (0–100), **sentinel alerts**, and a **risk score** from heuristics (unknown BLE, hidden Wi-Fi, strong RSSI). Guidance only — not forensic proof.
 
-**Current release:** `1.6.2-beta` (versionCode 10) — tap graph insights for full-screen map; cleaner hub layout (Scans · Map · Vault).
+### Ask (on-device assistant)
+
+Summarize, analyze risk, list BLE/Wi-Fi, etc. work **without** a downloaded model. Optional `.task` model via HTTPS download or **Pick model** from storage.
+
+### Scan history & knowledge graph
+
+- **On-device database** — scans, findings, GPS, risk, graph nodes/edges (Room).
+- **Native map** — OSMDroid + Carto dark basemap when nodes have coordinates; otherwise a **2D canvas** layout.
+- **Color coding** — scan sessions, BLE (cyan), Wi-Fi (amber), Bluetooth (pink), places (blue); link types (observed, at place, repeat).
+- **Scan detail sheet** — full signal list per saved scan, with filters and optional photo/video on the scan.
+- **Graph detail sheet** — tap signals, places, or **relationship lines** for context; scan nodes open the scan sheet.
+- **Copy** icons on findings, risk, insights, and scan rows.
+
+**EVRUS / EVRMORE** — local identity and P2P refs; optional EVRUS companion app; **Anchor graph** stays on-device.
+
+### Connect (local mesh)
+
+- **Messages** — X3DH + Double Ratchet (ChaCha20-Poly1305); export inbox as `.txt`
+- **Voice mesh** — PCM over local mesh
+- **Mesh radio** — LAN peers, encrypted session (port 28777, private IPs only)
+
+Published by **Manticore Technologies, LLC**.
 
 ## Requirements
 
 - Android **8.0+** (API 26+)
 - Bluetooth and Wi-Fi enabled for full results
-- **Location permission** may be required for Wi-Fi scans (Android platform rule)
+- **Location permission** for Wi-Fi scans and **GPS at scan time** (Android platform rules)
 - Android 12+: `BLUETOOTH_SCAN` / `BLUETOOTH_CONNECT`
 - Android 13+: `NEARBY_WIFI_DEVICES` (when applicable)
 
+**Network:** `INTERNET` is used for optional Ask model download and **map tile loading** on the Graph map (Carto CDN). Scan results are not sent to Signal Scoop servers.
+
 ## Publish on Google Play ($2)
 
-Publishing requires **your** [Google Play Developer](https://play.google.com/console) account (**$25 one-time** registration, separate from the app price).
+Publishing requires **your** [Google Play Developer](https://play.google.com/console) account (**$25 one-time** registration).
 
-1. Follow **[docs/play-store/PUBLISHING.md](docs/play-store/PUBLISHING.md)** (pricing, listing, data safety).
-2. Host **[docs/privacy-policy.html](docs/privacy-policy.html)** at a public HTTPS URL (required).
-3. Build the signed bundle:
-   ```bash
-   ./scripts/generate-release-keystore.sh   # once — back up the .jks file
-   ./scripts/build-play-bundle.sh           # → release/signal-scoop-play.aab
-   ```
-4. Upload `signal-scoop-play.aab` in Play Console and set **Paid → $2.00**.
+1. **[docs/play-store/PUBLISHING.md](docs/play-store/PUBLISHING.md)** — pricing, listing, data safety.
+2. Host **[docs/privacy-policy.html](docs/privacy-policy.html)** at a public HTTPS URL.
+3. `./scripts/generate-release-keystore.sh` then `./scripts/build-play-bundle.sh` → `release/signal-scoop-play.aab`
+4. Upload in Play Console — **Paid → $2.00**.
 
 ## Install the APK
 
-Prebuilt APKs (in `release/`):
-
 | File | Notes |
 |------|--------|
-| [`signal-scoop-debug.apk`](release/signal-scoop-debug.apk) | **Recommended for sideloading** — debug-signed, installs without extra signing steps |
-| [`signal-scoop-release.apk`](release/signal-scoop-release.apk) | Release build (unsigned); sign with your own keystore for production |
+| [`release/signal-scoop-debug.apk`](release/signal-scoop-debug.apk) | **Recommended for sideloading** — debug-signed |
+| [`release/signal-scoop-release.apk`](release/signal-scoop-release.apk) | Release APK (sign with your keystore for production) |
 
-On your phone:
-
-1. Copy the APK to the device (USB, cloud drive, etc.).
-2. Open it and allow **Install unknown apps** if prompted.
-3. Grant permissions when you first tap **Scan nearby signals**.
+1. Copy the APK to the device.
+2. Open it; allow **Install unknown apps** if prompted.
+3. Grant permissions; tap **Scan nearby signals** on the **Scan** tab.
 
 ## Build from source
 
 ### Prerequisites
 
 - JDK 17+
-- Android SDK with API 35 and Build-Tools 35
-
-Set `sdk.dir` in `android/local.properties` (see `android/local.properties.example`).
-
-If `./gradlew` reports **JAVA_HOME is not set**, either:
+- Android SDK API 35 + Build-Tools 35
+- `sdk.dir` in `android/local.properties` (see `android/local.properties.example`)
 
 ```bash
-# One-time per terminal session
-source android/env.sh
-```
-
-or install a system JDK (`sudo apt install openjdk-17-jdk`) and set `JAVA_HOME` in your shell profile.
-
-This repo also sets `org.gradle.java.home` in `android/gradle.properties` when using the portable JDK at `~/.local/jdk/jdk-17`.
-
-### Commands
-
-```bash
+source android/env.sh    # if JAVA_HOME is unset (~/.local/jdk/jdk-17 or system JDK)
 cd android
-source env.sh          # optional if JAVA_HOME is already configured
 ./gradlew assembleDebug
 ./gradlew assembleRelease
 ```
 
-The unsigned release APK is written to:
+Outputs:
 
-`android/app/build/outputs/apk/release/app-release.apk` (unsigned unless `keystore.properties` is configured)
+- Debug: `android/app/build/outputs/apk/debug/app-debug.apk`
+- Release: `android/app/build/outputs/apk/release/app-release.apk` (signed if `keystore.properties` exists)
 
-Copy or rename it as needed. For Play Store distribution you would sign with your own keystore.
+Copy to `release/` for sideloading:
+
+```bash
+cp android/app/build/outputs/apk/debug/app-debug.apk release/signal-scoop-debug.apk
+cp android/app/build/outputs/apk/release/app-release.apk release/signal-scoop-release.apk
+```
 
 ## Project layout
 
 ```
 signal-scoop/
 ├── android/                 # Kotlin + Jetpack Compose app
-├── release/                 # Shipped APK for sideloading
+├── docs/                    # Privacy policy, Play Store copy, data safety
+├── release/                 # Shipped APK / AAB artifacts
 ├── LICENSE                  # MIT (Manticore Technologies, LLC)
 ├── NOTICE.md                # Copyright and attribution
+├── SECURITY.md              # Permissions, mesh, storage
 ├── seed.md                  # Original MVP notes
-├── SIGNAL SCOOP LOGO.png    # Brand asset
 └── .beads/                  # Task tracking (Beads)
 ```
 
 ## Task tracking (Beads)
 
-This repo uses [Beads](https://github.com/gastownhall/beads) (`bd`) for agent-friendly issue tracking.
-
 ```bash
-bd ready          # tasks ready to work
-bd show <id>      # task details
-bd close <id>     # mark done
+bd ready
+bd show <id>
+bd close <id>
+bd prime    # full workflow context
 ```
-
-Run `bd prime` in the project root for workflow context.
 
 ## License
 
-Copyright © 2026 **Manticore Technologies, LLC**. All rights reserved.
-
-Signal Scoop is released under the [MIT License](LICENSE). Redistributions must retain the copyright notice and license text.
+Copyright © 2026 **Manticore Technologies, LLC**. [MIT License](LICENSE).
 
 ## Security & privacy
 
-Signal Scoop is built for **local-only, read-only** surveying. See **[SECURITY.md](SECURITY.md)** for the full policy.
+See **[SECURITY.md](SECURITY.md)** and in-app **Privacy & security**.
 
 | Control | Implementation |
 |---------|----------------|
-| No scan upload | Scan/Ask context stays on-device; HTTPS only for optional model download |
-| Local history only | Saved scans + graph in app-private DB; live session clears on exit; backup disabled |
-| Minimal permissions | Bluetooth/Wi-Fi/location with `neverForLocation` where supported; legacy BT on API 26–30 |
-| User consent | Scan runs only after you grant permissions and tap Scan |
-| Screen capture | `FLAG_SECURE` on the main screen |
-| Session privacy | Results cleared when you leave the app (`onStop`) |
-| Release hardening | R8 minify + shrink resources; verbose logs stripped |
-
-Expand **Privacy & security** in the app for a short in-ui summary.
+| No scan upload | History and graph stay in app-private storage |
+| Local history | Room DB; rename/delete scans; backup disabled |
+| Map tiles | HTTPS to Carto basemap only; no scan data in tile requests |
+| User consent | Scan only after permissions + tap |
+| Screen capture | `FLAG_SECURE` on sensitive screens |
+| Release | R8 minify + shrink; verbose logs stripped |
 
 ## Safety & limitations
 
-- Passive microphones or cameras **not broadcasting** radio signals cannot be detected reliably.
-- Wi-Fi scan frequency is **throttled by Android**; repeated scans may return stale or empty results.
-- RSSI and risk scores are **heuristic**, not forensic proof.
+- Passive cameras/mics **without radio** are not reliably detected.
+- Wi-Fi scans are **throttled by Android**.
+- RSSI and risk scores are **heuristic**, not proof.
 
 Use Signal Scoop as one input among many when reviewing your environment.

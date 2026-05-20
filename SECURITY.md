@@ -1,70 +1,77 @@
 # Security policy
 
 **Publisher:** Manticore Technologies, LLC  
-**Product:** Signal Scoop
+**Product:** Signal Scoop (`1.6.2-beta`)
 
-Signal Scoop is designed as a **local, read-only radio survey** and **defensive hacking sentinel** on your own phone. It detects hostile-radio patterns (unknown BLE, hidden Wi-Fi, strong proximate RSSI) and recommends protective actions — never offensive tooling. This document describes permissions, data, mesh boundaries, and threat model.
+Signal Scoop is a **local, read-only radio survey** and **defensive hacking sentinel**. It flags hostile-radio patterns and recommends protective actions — never offensive tooling.
 
 ## Scope (what we do)
 
-- Request the minimum Android permissions needed to list **BLE advertisements**, **Wi-Fi scan results**, **paired Bluetooth devices**, **NFC availability**, and **on-device sensors**.
-- Run scans only when you tap **Scan** and only while the app is in the foreground.
-- Capture a **native GPS fix** at scan time (platform `LocationManager`, GPS provider) when location is enabled.
-- **Save scans locally** in an app-private Room database (findings, risk, timestamp, coordinates, user-visible name).
-- Build a **local knowledge graph** (places, recurring signals, scan links) for the Graph tab — never transmitted.
-- Run a **defense sentinel** after each scan (heuristic alerts + playbook; not forensic proof).
-- Keep the **active session** in memory; live results clear when you leave the app. Saved History remains on-device until you delete it.
+- List **BLE**, **Wi-Fi scan results**, **paired Bluetooth**, **NFC**, and **on-device sensors** with minimal permissions.
+- Run scans only when you tap **Scan nearby signals** (foreground).
+- Capture **GPS** at scan time when location is enabled; store with saved scans locally.
+- **Save scans** in app-private Room DB (findings, risk, coordinates, user-visible name).
+- Build a **local knowledge graph** (scans, signals, places, links) for the Graph tab — not transmitted to Manticore servers.
+- **Defense sentinel** after each scan (heuristic alerts; not forensic proof).
+- Live session UI clears sensitive state when you leave the app; **saved History** remains until you delete it.
 
 ## Out of scope (what we never do)
 
-- No user accounts, analytics SDKs, ads, or crash reporters that phone home.
-- No scan data transmitted over the network. The **Ask** tab runs a **local** LiteRT/MediaPipe model on your phone.
-- `INTERNET` is used **only** when you explicitly download a `.task` model checkpoint (HTTPS). You can instead import a model via **Pick model** with no download.
-- Release builds block cleartext via `networkSecurityConfig`.
+- No accounts, analytics SDKs, ads, or crash reporters that phone home with scan payloads.
+- No scan/history upload to developer-operated backends.
 - No connecting to, pairing with, or deauthenticating remote devices.
-- No exploitation, fingerprinting of private devices beyond what the OS exposes to apps, or bypassing Android security controls.
-- No background scanning; scans stop when you leave the app.
+- No exploitation or bypassing Android security controls.
+- No background scanning when the app is not in use for survey features.
+
+## Network use
+
+| Use | Data sent |
+|-----|-----------|
+| Optional **Ask** model download | HTTPS to URL you trigger; `.task` checkpoint only |
+| **Knowledge map** basemap tiles | HTTPS tile requests to Carto CDN (map display only; no scan content) |
+| **Connect mesh** | Local LAN / BLE only; no internet relay |
+
+Release builds block cleartext except as configured in `networkSecurityConfig`.
 
 ## Connect mesh (optional, local only)
 
-- **LAN-only:** TCP mesh accepts connections only from private RFC1918 / link-local addresses; outbound connects are rejected otherwise.
-- **Limits:** 256 KiB max wire frame, 40 frames/s inbound, max 8 TCP peers, 4 KiB max plaintext message.
-- **Crypto:** X3DH + Double Ratchet (ChaCha20-Poly1305); prekeys verified before sessions.
-- **Lifecycle:** Mesh radio stops when the app leaves the foreground (`ProcessLifecycleOwner`).
-- **No internet relay:** NSD + TCP on port 28777; no cloud inbox.
+- **LAN-only:** TCP mesh accepts private RFC1918 / link-local peers; limits on frame size and rate.
+- **Crypto:** X3DH + Double Ratchet (ChaCha20-Poly1305).
+- **Lifecycle:** Mesh stops when the app leaves the foreground.
+- **No cloud inbox.**
 
-## Storage & WebView
+## Storage
 
 - **Mesh device ID:** `EncryptedSharedPreferences` (AES-256-GCM).
-- **History DB:** App-private Room (not SQLCipher; protect device with lock screen).
-- **Map graph WebView:** Asset-only `file://` canvas viewer (no external map tiles); graph JSON size-capped before injection via Android bridge.
+- **History / graph:** App-private Room (`signal_scoop_scan_history.db`); not SQLCipher — protect device with a lock screen.
+- **Knowledge graph UI:** Native **OSMDroid** map or **Compose Canvas** layout — no WebView graph viewer; graph JSON is built in-process.
 
 ## Permissions
 
 | Permission | Why |
 |------------|-----|
-| `BLUETOOTH_SCAN` / legacy `BLUETOOTH` | Discover nearby BLE devices (API-level split). |
-| `BLUETOOTH_CONNECT` | Read paired device names (API 31+). |
-| `ACCESS_WIFI_STATE` / `CHANGE_WIFI_STATE` | Trigger OS Wi-Fi scan and read results. |
-| `ACCESS_FINE_LOCATION` | Required by Android for Wi-Fi/BLE on many OEMs; also used for on-device GPS coordinates at scan time. |
-| `NEARBY_WIFI_DEVICES` | Wi-Fi scan on Android 13+ without tying scan to location when possible. |
+| `BLUETOOTH_SCAN` / legacy `BLUETOOTH` | BLE discovery |
+| `BLUETOOTH_CONNECT` | Paired device names (API 31+) |
+| `ACCESS_WIFI_STATE` / `CHANGE_WIFI_STATE` | Wi-Fi scan results |
+| `ACCESS_FINE_LOCATION` | Android Wi-Fi/BLE rules; GPS coordinates at scan time |
+| `NEARBY_WIFI_DEVICES` | Wi-Fi on Android 13+ where applicable |
+| `INTERNET` | Optional model download; map tile HTTPS |
 
-`BLUETOOTH_SCAN` and `NEARBY_WIFI_DEVICES` use `neverForLocation` where supported so Bluetooth/Wi-Fi APIs are not used for positioning; GPS uses the dedicated location stack.
+`neverForLocation` is used on Bluetooth/Wi-Fi permissions where supported; GPS uses the location stack separately.
 
 ## Data handling
 
-- **On-device history:** `signal_scoop_scan_history.db` in app-private storage; you can rename or delete scans from History.
-- **Backup / cloud transfer:** Disabled (`allowBackup=false`, empty backup rules).
-- **Screenshots:** The main screen uses `FLAG_SECURE` so recent-apps and screenshots do not capture MAC addresses and SSIDs by default.
-- **App switcher:** Sensitive UI is cleared when the app is stopped (not merely paused).
+- Rename or delete scans from **Graph → Scans**.
+- **Backup / cloud transfer:** Disabled (`allowBackup=false`).
+- **Screenshots:** `FLAG_SECURE` on sensitive screens.
 - **Logging:** Release builds strip verbose logs; scan payloads are not written to logcat in release.
 
 ## Reporting vulnerabilities
 
-If you believe you found a security issue in this project, please open a GitHub issue with reproduction steps and affected version. Do not post live exploit details publicly before a fix is available.
+Open a GitHub issue with reproduction steps and affected version. Do not post live exploit details publicly before a fix is available.
 
 ## Limitations
 
-Risk scores are **heuristics**, not forensic conclusions. Passive cameras or microphones that do not emit radio traffic cannot be detected. Android may throttle Wi-Fi scans.
+Risk scores are **heuristics**. Passive cameras or microphones without radio emissions may not be detected. Android may throttle Wi-Fi scans.
 
-See also [README.md](README.md) and in-app **Privacy & security**.
+See [README.md](README.md) and in-app **Privacy & security**.

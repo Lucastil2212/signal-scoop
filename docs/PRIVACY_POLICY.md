@@ -1,58 +1,65 @@
 # Privacy Policy — Signal Scoop
 
-**Last updated:** May 19, 2026  
+**Last updated:** May 20, 2026  
 **Publisher:** Manticore Technologies, LLC  
 **App:** Signal Scoop (`com.signalsoop.app`)  
 **Contact:** Replace with your support email before publishing (e.g. `support@manticoretechnologies.com`).
 
 ## Summary
 
-Signal Scoop scans **local wireless signals** on your phone (Bluetooth LE, Wi-Fi, paired Bluetooth, NFC status, and device sensors). **All processing happens on your device.** We do not operate servers that receive your scan results, and the app does not request internet access.
+Signal Scoop surveys **local wireless signals** on your phone. **Scan results and saved history stay on your device.** We do not operate servers that receive your scans. The app may use **HTTPS** only for (1) optional on-device AI model download you start, and (2) loading **map background tiles** on the Knowledge graph screen (Carto basemap — no scan data in those requests).
 
 ## Information the app accesses
 
-When you tap **Scan**, the app may access:
+When you tap **Scan nearby signals**, the app may access:
 
-| Data | Purpose | Leaves your device? |
-|------|---------|---------------------|
-| Nearby BLE device names, addresses, signal strength | Show scan results | **No** |
-| Wi-Fi network names (SSID), BSSID, signal, security flags | Show scan results | **No** |
-| Paired Bluetooth device names and addresses | Show scan results | **No** |
-| NFC hardware on/off state | Show capability | **No** |
-| Device sensor names and types | Show hardware list | **No** |
-| Location permission | Required by Android for Wi-Fi/BLE scans on many devices; **not used for GPS tracking or uploading location** | **No** |
+| Data | Purpose | Sent to Manticore? |
+|------|---------|-------------------|
+| BLE names, addresses, RSSI | Show and save results | **No** |
+| Wi-Fi SSID, BSSID, signal, security | Show and save results | **No** |
+| Paired Bluetooth devices | Show and save results | **No** |
+| NFC state | Show capability | **No** |
+| Sensor names/types | Show hardware | **No** |
+| GPS / location permission | Scan-time coordinates when enabled; Android Wi-Fi/BLE rules | **No** (stored locally only) |
 
-## What we do not collect
+## What we store on your phone
 
-- No accounts or registration
-- No analytics, advertising IDs, or crash reporting to third parties (in the stock app build)
-- No sale or sharing of personal data with third parties
-- No cloud backup of scan results (backup is disabled in the app manifest)
+- **Saved scans** — findings, risk summary, timestamp, optional GPS, user-defined name.
+- **Knowledge graph** — nodes and links derived from your scans (places, signals, sessions).
+- **Vault** — optional pet names for signals, photos/videos you attach, notes, local EVRUS links.
+- **Connect mesh** — encrypted session material and device ID in app-private storage.
+
+You can **delete scans** in the app. Uninstalling removes all app data.
+
+## What we do not do
+
+- No accounts or registration with Manticore
+- No sale of personal data
+- No analytics or ads in the stock build
+- No cloud backup of scan history (Android backup disabled for this app)
+- No upload of scan lists or graph to developer servers
 
 ## Data retention
 
-Scan results are kept **only in app memory** during your session and are cleared when you leave the app. We do not store scan history on disk.
+- **Saved history** remains until you delete it or uninstall the app.
+- **Live scan session** UI is cleared when you leave the app; saved scans are unaffected.
 
 ## Children
 
-Signal Scoop is not directed at children under 13. We do not knowingly collect personal information from children.
+Not directed at children under 13.
 
 ## Security
 
-See [SECURITY.md](../SECURITY.md) in the project repository for technical controls (no network permission, encrypted transport policy, screenshot blocking on results, etc.).
+See [SECURITY.md](../SECURITY.md) in the repository.
 
 ## Changes
 
-We may update this policy. The “Last updated” date will change when we do. Continued use after changes means you accept the updated policy.
-
-## Your rights
-
-Because we do not collect personal data on our servers, there is nothing for us to export or delete from a backend. Uninstalling the app removes the application from your device.
+We may update this policy; the “Last updated” date will change.
 
 ## Contact
 
-Questions about this policy: **REPLACE_WITH_YOUR_EMAIL**
+**REPLACE_WITH_YOUR_EMAIL**
 
 ---
 
-*Host this file at a public HTTPS URL (GitHub Pages, your website) and paste that URL into Google Play Console → App content → Privacy policy.*
+*Host [privacy-policy.html](privacy-policy.html) at a public HTTPS URL for Google Play Console.*

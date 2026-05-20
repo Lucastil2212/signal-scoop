@@ -74,7 +74,7 @@ Use text from [STORE_LISTING.md](STORE_LISTING.md).
 | Feature graphic | 1024×500 PNG |
 | Phone screenshots | At least 2, min 320px short side |
 
-Capture screenshots from the app on a real device (home, scan results, privacy card).
+Capture screenshots from the app on a real device (Scan tab with **Scan nearby signals** at top, findings + graph preview, **Graph → Scans** with insights card, **Graph → Map** full screen, scan detail sheet, privacy card).
 
 ### 6. App content (compliance)
 
@@ -130,7 +130,7 @@ Paste the URL in Play Console → **App content → Privacy policy**.
 
 ## After approval
 
-- Updates: bump `versionCode` / `versionName` in `android/app/build.gradle.kts`, rebuild AAB, upload new release.
+- Updates: bump `versionCode` / `versionName` in `android/app/build.gradle.kts` (current: **10** / **1.6.2-beta**), rebuild AAB, upload new release.
 - Refunds: handled by Google Play policy, not in-app.
 
 ## Common rejections
