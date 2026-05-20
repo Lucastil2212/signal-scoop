@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.OpenInFull
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -84,10 +85,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class HubTab(val label: String) {
-    Timeline("Timeline"),
-    GraphMap("Map + time"),
-    Vault("Vault"),
+private enum class HubTab(val label: String, val hint: String) {
+    Timeline("Scans", "Tap a scan for signals"),
+    GraphMap("Map", "Tap graph · full screen ↑"),
+    Vault("Vault", "Local data only"),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +101,8 @@ fun KnowledgeHubScreen(
     val uiState by viewModel.uiState.collectAsState()
     var hubTab by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
+    val hasGraph = uiState.graphVisualization?.nodes?.isNotEmpty() == true
+    val activeTab = HubTab.entries[hubTab]
 
     val savePdfLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
@@ -129,10 +132,22 @@ fun KnowledgeHubScreen(
                     Column {
                         Text("Knowledge", color = ScoopWhite)
                         Text(
-                            "Tap a scan to see its signals · map · vault",
+                            activeTab.hint,
                             style = MaterialTheme.typography.bodySmall,
                             color = ScoopMuted,
                         )
+                    }
+                },
+                actions = {
+                    if (hasGraph) {
+                        IconButton(onClick = onOpenGraphFullscreen) {
+                            Icon(Icons.Rounded.OpenInFull, contentDescription = "Full-screen map", tint = ScoopGreen)
+                        }
+                    }
+                    if (hubTab == HubTab.GraphMap.ordinal) {
+                        IconButton(onClick = { viewModel.refreshGraphAndInsights() }) {
+                            Icon(Icons.Rounded.Refresh, contentDescription = "Refresh graph", tint = ScoopMuted)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = ScoopBlack),
@@ -165,105 +180,75 @@ fun KnowledgeHubScreen(
                 }
             }
 
-            Text(
-                uiState.statusMessage,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = ScoopMuted,
-            )
-
-            ReportSelectionBar(
-                selectedCount = uiState.reportSelectedIds.size,
-                totalScans = uiState.snapshots.size,
-                generating = uiState.reportGenerating,
-                onSelectAll = viewModel::selectAllForReport,
-                onClear = viewModel::clearReportSelection,
-                onSavePdf = {
-                    savePdfLauncher.launch("signal-scoop-report-${System.currentTimeMillis()}.pdf")
-                },
-                onSharePdf = {
-                    viewModel.generateReportPdf(
-                        onReady = { file ->
-                            val uri =
-                                FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.fileprovider",
-                                    file,
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                when (activeTab) {
+                    HubTab.Timeline ->
+                        TimelineTab(
+                            uiState = uiState,
+                            viewModel = viewModel,
+                            onOpenGraphFullscreen = onOpenGraphFullscreen,
+                            onSavePdf = {
+                                savePdfLauncher.launch("signal-scoop-report-${System.currentTimeMillis()}.pdf")
+                            },
+                            onSharePdf = {
+                                viewModel.generateReportPdf(
+                                    onReady = { file ->
+                                        val uri =
+                                            FileProvider.getUriForFile(
+                                                context,
+                                                "${context.packageName}.fileprovider",
+                                                file,
+                                            )
+                                        val intent =
+                                            android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                type = "application/pdf"
+                                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                        sharePdfLauncher.launch(
+                                            android.content.Intent.createChooser(intent, "Share PDF report"),
+                                        )
+                                    },
+                                    onError = { },
                                 )
-                            val intent =
-                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "application/pdf"
-                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                            sharePdfLauncher.launch(
-                                android.content.Intent.createChooser(intent, "Share PDF report"),
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    HubTab.GraphMap -> {
+                        LaunchedEffect(Unit) { viewModel.refreshGraphAndInsights() }
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            KnowledgeGraphGeoTimelineView(
+                                visualization = uiState.graphVisualization,
+                                filterScanId = uiState.graphFilterScanId,
+                                onFilterScanChange = viewModel::setGraphTimelineFilter,
+                                onNodeSelected = viewModel::onGraphNodeSelected,
+                                onLinkSelected = viewModel::onGraphLinkSelected,
+                                onOpenScanDetail = viewModel::openScanDetail,
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                emptyMessage =
+                                    "Save a scan on the Scan tab, then open Map here.",
                             )
-                        },
-                        onError = { },
-                    )
-                },
-            )
-
-            when (HubTab.entries[hubTab]) {
-                HubTab.Timeline ->
-                    TimelineTab(
-                        uiState = uiState,
-                        viewModel = viewModel,
-                        modifier = Modifier.weight(1f),
-                    )
-                HubTab.GraphMap -> {
-                    LaunchedEffect(Unit) { viewModel.refreshGraphAndInsights() }
-                    KnowledgeGraphGeoTimelineView(
-                        visualization = uiState.graphVisualization,
-                        filterScanId = uiState.graphFilterScanId,
-                        onFilterScanChange = viewModel::setGraphTimelineFilter,
-                        onNodeSelected = viewModel::onGraphNodeSelected,
-                        onLinkSelected = viewModel::onGraphLinkSelected,
-                        onOpenScanDetail = viewModel::openScanDetail,
-                        modifier = Modifier.weight(1f).fillMaxSize(),
-                        emptyMessage =
-                            "Save a scan on the Scan tab, then return here. Tap nodes or lines for details.",
-                        footer = {
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                FilledTonalButton(
-                                    onClick = onOpenGraphFullscreen,
-                                    modifier = Modifier.weight(1f),
-                                    enabled = (uiState.graphVisualization?.nodes?.isNotEmpty() == true),
-                                ) {
-                                    Icon(Icons.Rounded.OpenInFull, contentDescription = null)
-                                    Text("Full screen")
-                                }
-                                FilledTonalButton(
-                                    onClick = { viewModel.refreshGraphAndInsights() },
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text("Refresh")
-                                }
+                            Surface(color = ScoopSurfaceHigh, modifier = Modifier.fillMaxWidth()) {
                                 FilledTonalButton(
                                     onClick = { viewModel.anchorGraphToEvrmore() },
-                                    modifier = Modifier.weight(1f),
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
                                 ) {
-                                    Text("Anchor")
+                                    Text("Anchor graph to EVRUS (on-device)")
                                 }
                             }
-                        },
-                    )
+                        }
+                    }
+                    HubTab.Vault ->
+                        VaultTab(
+                            uiState = uiState,
+                            viewModel = viewModel,
+                            modifier = Modifier.fillMaxSize(),
+                        )
                 }
-                HubTab.Vault ->
-                    VaultTab(
-                        uiState = uiState,
-                        viewModel = viewModel,
-                        modifier = Modifier.weight(1f),
-                    )
             }
-            ManticoreFooter()
         }
     }
 }
@@ -342,17 +327,45 @@ private fun Dialogs(viewModel: HistoryViewModel, uiState: com.signalsoop.app.His
 private fun TimelineTab(
     uiState: com.signalsoop.app.HistoryUiState,
     viewModel: HistoryViewModel,
+    onOpenGraphFullscreen: () -> Unit,
+    onSavePdf: () -> Unit,
+    onSharePdf: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        if (uiState.statusMessage.isNotBlank()) {
+            item {
+                Text(
+                    uiState.statusMessage,
+                    color = ScoopMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
         uiState.insights?.let { insights ->
-            item { GraphInsightsCard(insights) }
+            item {
+                GraphInsightsCard(
+                    insights = insights,
+                    onOpenFullscreen = onOpenGraphFullscreen,
+                )
+            }
         }
         item { TimelineHelpCard() }
+        item {
+            ReportSelectionBar(
+                selectedCount = uiState.reportSelectedIds.size,
+                totalScans = uiState.snapshots.size,
+                generating = uiState.reportGenerating,
+                onSelectAll = viewModel::selectAllForReport,
+                onClear = viewModel::clearReportSelection,
+                onSavePdf = onSavePdf,
+                onSharePdf = onSharePdf,
+            )
+        }
         item {
             FilledTonalButton(
                 onClick = { viewModel.beginAddNote(null) },
@@ -384,6 +397,7 @@ private fun TimelineTab(
                 )
             }
         }
+        item { ManticoreFooter() }
     }
 }
 
@@ -463,6 +477,7 @@ private fun VaultTab(
                 }
             }
         }
+        item { ManticoreFooter() }
     }
 }
 
@@ -622,17 +637,34 @@ private fun ReportSelectionBar(
 }
 
 @Composable
-private fun GraphInsightsCard(insights: KnowledgeGraphInsights) {
-    Surface(shape = RoundedCornerShape(16.dp), color = ScoopSurfaceHigh, modifier = Modifier.fillMaxWidth()) {
+private fun GraphInsightsCard(
+    insights: KnowledgeGraphInsights,
+    onOpenFullscreen: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = ScoopSurfaceHigh,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenFullscreen),
+    ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Icon(Icons.Rounded.Hub, contentDescription = null, tint = ScoopGreen)
-                    Text("Graph insights", style = MaterialTheme.typography.titleSmall, color = ScoopGreen)
+                    Column {
+                        Text("Graph insights", style = MaterialTheme.typography.titleSmall, color = ScoopGreen)
+                        Text(
+                            "Tap for full-screen map",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ScoopMuted,
+                        )
+                    }
                 }
                 CopyIconButton(
                     label = "graph insights",
@@ -642,6 +674,7 @@ private fun GraphInsightsCard(insights: KnowledgeGraphInsights) {
                             insights.recurringSignals.forEach { append("• ${it.label} (${it.scanCount}×)\n") }
                         },
                 )
+                Icon(Icons.Rounded.ChevronRight, contentDescription = "Open map", tint = ScoopGreen)
             }
             Text(
                 "${insights.totalScans} scans · ${insights.scansWithGps} GPS · ${insights.uniquePlaces} places",
@@ -661,7 +694,7 @@ private fun TimelineHelpCard() {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Your scan history", color = ScoopWhite, style = MaterialTheme.typography.titleSmall)
             Text(
-                "Each card is one survey you ran on the Scan tab. Tap a card to open every BLE, Wi-Fi, and Bluetooth signal from that session. Use the checkbox for PDF reports.",
+                "Tap Graph insights above for the full-screen map. Tap a scan card for all signals from that run. Checkboxes are for PDF reports only.",
                 color = ScoopMuted,
                 style = MaterialTheme.typography.bodySmall,
             )

@@ -26,6 +26,8 @@ fun KnowledgeGraphGeoTimelineView(
     onOpenScanDetail: (scanId: String) -> Unit,
     modifier: Modifier = Modifier,
     emptyMessage: String = "Save a scan on the Scan tab to build your knowledge graph.",
+    showChrome: Boolean = true,
+    showTimeline: Boolean = true,
     footer: @Composable (() -> Unit)? = null,
 ) {
     if (visualization == null || visualization.nodes.isEmpty()) {
@@ -44,12 +46,14 @@ fun KnowledgeGraphGeoTimelineView(
     val showMap = visualization.geoNodeCount > 0
 
     Column(modifier = modifier.fillMaxSize()) {
-        GraphGraphChrome(
-            nodeCount = slice.nodes.size,
-            linkCount = slice.links.size,
-            usesMap = showMap,
-            filterLabel = slice.label,
-        )
+        if (showChrome) {
+            GraphGraphChrome(
+                nodeCount = slice.nodes.size,
+                linkCount = slice.links.size,
+                usesMap = showMap,
+                filterLabel = slice.label,
+            )
+        }
         if (showMap) {
             KnowledgeGraphMapLayer(
                 visualization = visualization,
@@ -68,13 +72,15 @@ fun KnowledgeGraphGeoTimelineView(
                 emptyMessage = emptyMessage,
             )
         }
-        GraphTimelineBar(
-            scans = visualization.timelineScans,
-            filterScanId = filterScanId,
-            filterLabel = slice.label,
-            onSelectScan = onFilterScanChange,
-            onOpenScanDetail = onOpenScanDetail,
-        )
+        if (showTimeline) {
+            GraphTimelineBar(
+                scans = visualization.timelineScans,
+                filterScanId = filterScanId,
+                filterLabel = slice.label,
+                onSelectScan = onFilterScanChange,
+                onOpenScanDetail = onOpenScanDetail,
+            )
+        }
         footer?.invoke()
     }
 }

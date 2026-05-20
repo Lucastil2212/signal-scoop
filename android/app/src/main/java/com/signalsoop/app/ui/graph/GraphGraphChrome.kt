@@ -55,17 +55,21 @@ fun GraphGraphChrome(
                 style = MaterialTheme.typography.labelMedium,
             )
             Text(
-                "Tap a scan below, a node, or a line for details",
+                "Past scans: tap for signals · nodes & lines: tap for details",
                 color = ScoopMuted,
                 style = MaterialTheme.typography.labelSmall,
             )
-            GraphLegendRow()
+            GraphLegendRow(compact = false)
         }
     }
 }
 
 @Composable
-private fun GraphLegendRow() {
+fun GraphLegendRow(compact: Boolean = false) {
+    if (compact) {
+        Text("Green = scan · cyan = BLE · amber = Wi-Fi · pink = BT", color = ScoopMuted, style = MaterialTheme.typography.labelSmall)
+        return
+    }
     val scroll = rememberScrollState()
     Row(
         modifier =

@@ -95,7 +95,7 @@ fun MainShell(
                             Icon(
                                 when (dest) {
                                     MainTab.Scan -> Icons.Rounded.Radar
-                                    MainTab.Graph -> Icons.Rounded.History
+                                    MainTab.Graph -> Icons.Rounded.Hub
                                     MainTab.Connect -> Icons.Rounded.Hub
                                     MainTab.Ask -> Icons.Rounded.Chat
                                 },

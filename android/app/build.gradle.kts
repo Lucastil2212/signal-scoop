@@ -21,8 +21,8 @@ android {
         applicationId = "com.signalsoop.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.6.1-beta"
+        versionCode = 10
+        versionName = "1.6.2-beta"
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")

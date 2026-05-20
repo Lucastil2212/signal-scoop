@@ -1,5 +1,6 @@
 package com.signalsoop.app.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -21,6 +22,7 @@ import com.signalsoop.app.HistoryViewModel
 import com.signalsoop.app.ui.graph.KnowledgeGraphGeoTimelineView
 import com.signalsoop.app.ui.theme.ScoopBlack
 import com.signalsoop.app.ui.theme.ScoopGreen
+import com.signalsoop.app.ui.theme.ScoopMuted
 import com.signalsoop.app.ui.theme.ScoopWhite
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,7 +66,14 @@ fun GraphFullscreenScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Knowledge graph", color = ScoopWhite)
+                    Column {
+                        Text("Knowledge map", color = ScoopWhite)
+                        Text(
+                            "Tap scans · nodes · lines · ← back when done",
+                            color = ScoopMuted,
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {

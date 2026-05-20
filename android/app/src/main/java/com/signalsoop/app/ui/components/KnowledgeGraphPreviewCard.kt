@@ -1,5 +1,6 @@
 package com.signalsoop.app.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Hub
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -57,19 +59,27 @@ fun KnowledgeGraphPreviewCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = hasGraph, onClick = onOpenFullscreen),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
                 ) {
                     Icon(Icons.Rounded.Hub, contentDescription = null, tint = ScoopGreen)
                     Column {
                         Text("Knowledge graph", style = MaterialTheme.typography.titleMedium, color = ScoopWhite)
                         Text(
-                            "$scanCount scans · $placeCount places · $signalCount signals",
+                            if (hasGraph) {
+                                "Tap for full-screen map · $scanCount scans"
+                            } else {
+                                "Save a scan to build your map"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = ScoopMuted,
                         )
@@ -80,6 +90,7 @@ fun KnowledgeGraphPreviewCard(
                         label = "graph stats",
                         value = "Knowledge graph: $scanCount scans, $placeCount places, $signalCount signals",
                     )
+                    Icon(Icons.Rounded.ChevronRight, contentDescription = "Full screen", tint = ScoopGreen)
                 }
             }
 
@@ -90,12 +101,15 @@ fun KnowledgeGraphPreviewCard(
                 onNodeSelected = onNodeSelected,
                 onLinkSelected = onLinkSelected,
                 onOpenScanDetail = onOpenScanDetail,
+                showChrome = false,
+                showTimeline = false,
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(280.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                emptyMessage = "Save a scan to see your graph. Tap a past scan, node, or line for details.",
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(enabled = hasGraph, onClick = onOpenFullscreen),
+                emptyMessage = "Run a scan to see your map here.",
             )
 
             Row(
@@ -121,7 +135,7 @@ fun KnowledgeGraphPreviewCard(
                     onClick = onOpenGraphTab,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Graph hub", color = ScoopWhite)
+                    Text("Open Map tab", color = ScoopWhite)
                 }
             }
         }
