@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.signalsoop.app.HistoryViewModel
 import com.signalsoop.app.history.GraphMediaStorage
+import com.signalsoop.app.history.KnowledgeGraphBuilder
 import com.signalsoop.app.history.KnowledgeGraphInsights
 import com.signalsoop.app.history.ScanSnapshot
 import com.signalsoop.app.model.Finding
@@ -795,11 +796,7 @@ private fun ScanHistoryCard(
 }
 
 private fun signalKeyFrom(finding: Finding): String? =
-    when {
-        finding.id.startsWith("ble-") -> finding.id.removePrefix("ble-")
-        finding.id.startsWith("wifi-") -> finding.id.removePrefix("wifi-")
-        else -> finding.id.takeIf { finding.category == SignalCategory.BLUETOOTH }
-    }
+    KnowledgeGraphBuilder.graphSignalKeyFrom(finding)
 
 private fun addressFrom(finding: Finding): String? {
     val part = finding.detail.substringBefore(" ·").trim()

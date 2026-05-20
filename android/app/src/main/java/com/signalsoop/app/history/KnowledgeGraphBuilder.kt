@@ -8,7 +8,8 @@ import org.json.JSONObject
 
 /**
  * Builds local knowledge-graph nodes and edges when a scan is saved.
- * Signals (BLE MAC, Wi-Fi BSSID) link across scans; places cluster by rounded coordinates.
+ * Radio signals (BLE, Wi-Fi, Bluetooth), NFC, and on-phone sensors link across scans;
+ * places cluster by rounded coordinates.
  */
 object KnowledgeGraphBuilder {
     const val NODE_SCAN = "SCAN"
@@ -18,6 +19,26 @@ object KnowledgeGraphBuilder {
     const val REL_AT_PLACE = "AT_PLACE"
     const val REL_OBSERVED = "OBSERVED"
     const val REL_REPEAT = "REPEAT"
+
+    private val graphExcludedIds =
+        setOf(
+            "permissions-missing",
+            "ble-permission",
+            "ble-unsupported",
+            "ble-disabled",
+            "ble-no-scanner",
+            "ble-empty",
+            "ble-error",
+            "wifi-permission",
+            "wifi-location-off",
+            "wifi-disabled",
+            "wifi-empty",
+            "bt-permission",
+            "bt-unsupported",
+            "bt-disabled",
+            "bt-none-paired",
+            "scan-complete",
+        )
 
     data class GraphDelta(
         val nodes: List<GraphNodeEntity>,
@@ -33,12 +54,14 @@ object KnowledgeGraphBuilder {
         val scanNodeId = scanNodeId(snapshot.id)
 
         val scanMeta =
-            JSONObject()
-                .put("scannedAt", snapshot.scannedAtEpochMs)
-                .put("riskScore", snapshot.riskSummary?.score ?: JSONObject.NULL)
-        snapshot.geoFix?.let { fix ->
-            scanMeta.put("lat", fix.latitude).put("lon", fix.longitude)
-        }
+            JSONObject().apply {
+                put("scannedAt", snapshot.scannedAtEpochMs)
+                put("riskScore", snapshot.riskSummary?.score ?: JSONObject.NULL)
+                snapshot.geoFix?.let { fix ->
+                    put("lat", fix.latitude)
+                    put("lon", fix.longitude)
+                }
+            }
         nodes +=
             GraphNodeEntity(
                 id = scanNodeId,
@@ -57,8 +80,10 @@ object KnowledgeGraphBuilder {
                     label = "Near ${snapshot.geoFix.formatCoordinates()}",
                     metadataJson =
                         JSONObject()
-                            .put("lat", snapshot.geoFix.latitude)
-                            .put("lon", snapshot.geoFix.longitude)
+                            .apply {
+                                put("lat", snapshot.geoFix.latitude)
+                                put("lon", snapshot.geoFix.longitude)
+                            }
                             .toString(),
                 )
             edges +=
@@ -78,12 +103,8 @@ object KnowledgeGraphBuilder {
                 GraphNodeEntity(
                     id = signalNodeId,
                     nodeType = NODE_SIGNAL,
-                    label = finding.title,
-                    metadataJson =
-                        JSONObject()
-                            .put("category", finding.category.name)
-                            .put("detail", finding.detail)
-                            .toString(),
+                    label = graphSignalLabel(finding),
+                    metadataJson = signalMetadataJson(finding).toString(),
                 )
             edges +=
                 GraphEdgeEntity(
@@ -128,15 +149,59 @@ object KnowledgeGraphBuilder {
         return map
     }
 
-    private fun isGraphSignal(finding: Finding): Boolean =
-        finding.category == SignalCategory.BLE ||
-            finding.category == SignalCategory.WIFI ||
-            finding.category == SignalCategory.BLUETOOTH
+    fun graphSignalKeyFrom(finding: Finding): String? = graphSignalKey(finding)
+
+    fun isGraphSignal(finding: Finding): Boolean {
+        if (finding.id in graphExcludedIds) return false
+        return when (finding.category) {
+            SignalCategory.BLE,
+            SignalCategory.WIFI,
+            SignalCategory.BLUETOOTH,
+            SignalCategory.NFC,
+            SignalCategory.SENSORS,
+            -> graphSignalKey(finding) != null
+            else -> false
+        }
+    }
+
+    private fun graphSignalLabel(finding: Finding): String {
+        val prefix = finding.category.label
+        return if (finding.title.startsWith(prefix, ignoreCase = true)) {
+            finding.title
+        } else {
+            "$prefix · ${finding.title}"
+        }
+    }
+
+    private fun signalMetadataJson(finding: Finding): JSONObject =
+        JSONObject().apply {
+            put("category", finding.category.name)
+            put("title", finding.title)
+            put("detail", finding.detail)
+            put("findingId", finding.id)
+            finding.signalStrength?.let { put("rssi", it) }
+            if (finding.riskPoints > 0) put("riskPoints", finding.riskPoints)
+        }
 
     private fun graphSignalKey(finding: Finding): String? {
-        if (finding.id.startsWith("ble-") && finding.id.length > 4) return finding.id.removePrefix("ble-")
-        if (finding.id.startsWith("wifi-") && finding.id.length > 5) return finding.id.removePrefix("wifi-")
-        if (finding.category == SignalCategory.BLUETOOTH && finding.id.isNotBlank()) return finding.id
+        if (finding.id.startsWith("ble-") && finding.id.length > 4) {
+            return finding.id.removePrefix("ble-")
+        }
+        if (finding.id.startsWith("wifi-") && finding.id.length > 5) {
+            return finding.id.removePrefix("wifi-")
+        }
+        if (finding.id.startsWith("paired-") && finding.id.length > 7) {
+            return finding.id.removePrefix("paired-")
+        }
+        if (finding.id.startsWith("sensor-") && finding.id.length > 7) {
+            return finding.id.removePrefix("sensor-")
+        }
+        if (finding.id == "nfc-status" || finding.id.startsWith("nfc-")) {
+            return finding.id
+        }
+        if (finding.category == SignalCategory.BLUETOOTH && finding.id.isNotBlank()) {
+            return finding.id
+        }
         return null
     }
 }

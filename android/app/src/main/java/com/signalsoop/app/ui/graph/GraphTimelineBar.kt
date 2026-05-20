@@ -138,32 +138,3 @@ fun GraphTimelineBar(
         }
     }
 }
-
-@Composable
-fun GraphColorLegend(
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        color = ScoopBlack.copy(alpha = 0.82f),
-        shape = RoundedCornerShape(10.dp),
-    ) {
-        Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            LegendRow(Color(0xFF39FF14), "Scan (color = session)")
-            LegendRow(Color(0xFF7AE7FF), "BLE signal")
-            LegendRow(Color(0xFFFFB020), "Wi-Fi signal")
-            LegendRow(Color(0xFFFF4D6D), "Bluetooth signal")
-            LegendRow(Color(0xFF00AEEF), "Place")
-        }
-    }
-}
-
-@Composable
-private fun LegendRow(color: Color, label: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        androidx.compose.foundation.layout.Box(
-            modifier = Modifier.size(8.dp).clip(CircleShape).background(color),
-        )
-        Text(label, color = ScoopMuted, style = MaterialTheme.typography.labelSmall)
-    }
-}

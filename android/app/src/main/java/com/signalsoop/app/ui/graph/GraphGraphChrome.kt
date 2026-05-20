@@ -3,6 +3,7 @@ package com.signalsoop.app.ui.graph
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import com.signalsoop.app.history.GraphColorPalette
 import com.signalsoop.app.ui.theme.ScoopBlack
 import com.signalsoop.app.ui.theme.ScoopMuted
-import com.signalsoop.app.ui.theme.ScoopSurfaceHigh
 import com.signalsoop.app.ui.theme.ScoopWhite
 
 @Composable
@@ -36,12 +36,13 @@ fun GraphGraphChrome(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = ScoopSurfaceHigh,
+        color = ScoopBlack.copy(alpha = 0.72f),
         shape = RoundedCornerShape(0.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text =
@@ -55,48 +56,86 @@ fun GraphGraphChrome(
                 style = MaterialTheme.typography.labelMedium,
             )
             Text(
-                "Past scans: tap for signals · nodes & lines: tap for details",
+                "Tap nodes & lines",
                 color = ScoopMuted,
                 style = MaterialTheme.typography.labelSmall,
             )
-            GraphLegendRow(compact = false)
+        }
+    }
+}
+
+/** Floating legend over the map/canvas so it is not covered by the timeline strip. */
+@Composable
+fun GraphMapLegendOverlay(
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        color = ScoopBlack.copy(alpha = 0.88f),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text("Map key", color = ScoopWhite, style = MaterialTheme.typography.labelMedium)
+            Text("Scans use session colors (timeline chips)", color = ScoopMuted, style = MaterialTheme.typography.labelSmall)
+            Text("Signals", color = ScoopMuted, style = MaterialTheme.typography.labelSmall)
+            GraphLegendRow(signalsOnly = true)
+            Text("Links", color = ScoopMuted, style = MaterialTheme.typography.labelSmall)
+            GraphLegendRow(linksOnly = true)
         }
     }
 }
 
 @Composable
-fun GraphLegendRow(compact: Boolean = false) {
+fun GraphLegendRow(
+    compact: Boolean = false,
+    signalsOnly: Boolean = false,
+    linksOnly: Boolean = false,
+) {
     if (compact) {
-        Text("Green = scan · cyan = BLE · amber = Wi-Fi · pink = BT", color = ScoopMuted, style = MaterialTheme.typography.labelSmall)
+        Text(
+            "BLE · Wi-Fi · BT · NFC · Sensor · Place · links",
+            color = ScoopMuted,
+            style = MaterialTheme.typography.labelSmall,
+        )
         return
     }
     val scroll = rememberScrollState()
+    val entries =
+        when {
+            signalsOnly -> GraphColorPalette.signalLegendEntries()
+            linksOnly -> GraphColorPalette.linkLegendEntries()
+            else -> GraphColorPalette.signalLegendEntries() + GraphColorPalette.linkLegendEntries()
+        }
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .horizontalScroll(scroll),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        LegendChip(Color(0xFF39FF14), "Scan")
-        LegendChip(Color(0xFF7AE7FF), "BLE")
-        LegendChip(Color(0xFFFFB020), "Wi-Fi")
-        LegendChip(Color(0xFFFF4D6D), "BT")
-        LegendChip(GraphColorPalette.place, "Place")
-        LegendChip(GraphColorPalette.linkObserved, "Link")
-        LegendChip(GraphColorPalette.linkRepeat, "Repeat")
+        entries.forEach { entry -> LegendChip(entry.color, entry.label) }
     }
 }
 
 @Composable
+fun GraphColorLegend(
+    modifier: Modifier = Modifier,
+) {
+    GraphMapLegendOverlay(modifier = modifier)
+}
+
+@Composable
 private fun LegendChip(color: Color, label: String) {
-    Surface(color = ScoopBlack, shape = RoundedCornerShape(8.dp)) {
+    Surface(color = ScoopBlack.copy(alpha = 0.6f), shape = RoundedCornerShape(8.dp)) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            androidx.compose.foundation.layout.Box(
+            Box(
                 modifier = Modifier.size(8.dp).clip(CircleShape).background(color),
             )
             Text(label, color = ScoopMuted, style = MaterialTheme.typography.labelSmall)

@@ -15,6 +15,7 @@ data class KnowledgeGraphInsights(
     val riskTrendNote: String?,
 ) {
     data class RecurringSignalInsight(
+        val signalKey: String,
         val label: String,
         val category: SignalCategory,
         val scanCount: Int,
@@ -33,6 +34,8 @@ object KnowledgeGraphInsightsEngine {
         scans: List<SavedScanEntity>,
         nodes: List<GraphNodeEntity>,
         edges: List<GraphEdgeEntity>,
+        maxPlaces: Int = 6,
+        maxRecurringSignals: Int = 12,
     ): KnowledgeGraphInsights {
         val scanNodes = nodes.filter { it.nodeType == KnowledgeGraphBuilder.NODE_SCAN }
         val placeNodes = nodes.filter { it.nodeType == KnowledgeGraphBuilder.NODE_PLACE }
@@ -55,7 +58,7 @@ object KnowledgeGraphInsightsEngine {
                 }
                 .filter { it.scanCount > 0 }
                 .sortedByDescending { it.scanCount }
-                .take(6)
+                .let { list -> if (maxPlaces <= 0) list else list.take(maxPlaces) }
 
         val observationsBySignal =
             edges
@@ -79,6 +82,7 @@ object KnowledgeGraphInsightsEngine {
                             runCatching { SignalCategory.valueOf(name) }.getOrNull()
                         } ?: SignalCategory.BLE
                     KnowledgeGraphInsights.RecurringSignalInsight(
+                        signalKey = signal.id.removePrefix("signal:"),
                         label = signal.label,
                         category = category,
                         scanCount = scanIds.size,
@@ -90,7 +94,7 @@ object KnowledgeGraphInsightsEngine {
                     )
                 }
                 .sortedByDescending { it.scanCount }
-                .take(12)
+                .let { list -> if (maxRecurringSignals <= 0) list else list.take(maxRecurringSignals) }
 
         val riskScores = scans.mapNotNull { it.riskScore }
         val averageRisk =
@@ -118,7 +122,34 @@ object KnowledgeGraphInsightsEngine {
                 }
             }
 
-        return KnowledgeGraphInsights(
+        return buildResult(
+            scans = scans,
+            placeNodes = placeNodes,
+            placeSummaries = placeSummaries,
+            recurringSignals = recurringSignals,
+            riskScores = riskScores,
+            averageRisk = averageRisk,
+            trendNote = trendNote,
+        )
+    }
+
+    /** Full graph digest for PDF export (no caps on places or recurring signals). */
+    fun fromForReport(
+        scans: List<SavedScanEntity>,
+        nodes: List<GraphNodeEntity>,
+        edges: List<GraphEdgeEntity>,
+    ): KnowledgeGraphInsights = from(scans, nodes, edges, maxPlaces = 0, maxRecurringSignals = 0)
+
+    private fun buildResult(
+        scans: List<SavedScanEntity>,
+        placeNodes: List<GraphNodeEntity>,
+        placeSummaries: List<KnowledgeGraphInsights.PlaceInsight>,
+        recurringSignals: List<KnowledgeGraphInsights.RecurringSignalInsight>,
+        riskScores: List<Int>,
+        averageRisk: Int?,
+        trendNote: String?,
+    ): KnowledgeGraphInsights =
+        KnowledgeGraphInsights(
             totalScans = scans.size,
             scansWithGps = scans.count { it.latitude != null && it.longitude != null },
             uniquePlaces = placeNodes.size,
@@ -127,7 +158,6 @@ object KnowledgeGraphInsightsEngine {
             averageRiskScore = averageRisk,
             riskTrendNote = trendNote,
         )
-    }
 
     fun formatDigest(insights: KnowledgeGraphInsights): String = buildString {
         appendLine("Scan history (${insights.totalScans} saved scans, ${insights.scansWithGps} with GPS)")

@@ -2,8 +2,10 @@ package com.signalsoop.app.history
 
 import android.content.Context
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
+import com.signalsoop.app.assistant.ScanAnalytics
 import com.signalsoop.app.model.Finding
 import com.signalsoop.app.model.SignalCategory
 import java.io.File
@@ -15,8 +17,19 @@ import java.util.Locale
 object ScanReportPdfGenerator {
     private const val PAGE_W = 595
     private const val PAGE_H = 842
-    private const val MARGIN = 48f
-    private const val LINE = 16f
+    private const val MARGIN = 44f
+    private const val LINE = 14f
+    private const val BULLET_GAP = 14f
+
+    private val reportCategoryOrder =
+        listOf(
+            SignalCategory.BLE,
+            SignalCategory.WIFI,
+            SignalCategory.BLUETOOTH,
+            SignalCategory.NFC,
+            SignalCategory.SENSORS,
+            SignalCategory.SYSTEM,
+        )
 
     fun write(
         context: Context,
@@ -27,31 +40,281 @@ object ScanReportPdfGenerator {
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val out = File(dir, "signal-scoop-report-$stamp.pdf")
         val doc = PdfDocument()
-        val titlePaint =
+        val renderer = PdfRenderer(doc)
+        val dateFmt = SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.getDefault())
+
+        renderer.drawTitle("Signal Scoop — Scan Report")
+        renderer.drawMuted(
+            "Generated ${dateFmt.format(Date())} · ${scans.size} scan(s) · " +
+                "${scans.sumOf { it.findings.size }} findings · on-device only",
+        )
+        renderer.spacer(8f)
+
+        renderer.drawHeading("Color key")
+        drawSignalLegend(renderer)
+        GraphColorPalette.linkLegendEntries().forEach { entry ->
+            renderer.drawLegendEntry(linkColorArgb(entry.label), entry.label)
+        }
+        renderer.spacer(10f)
+
+        renderer.drawHeading("Data we collect (every scan)")
+        dataCollectionOverview().forEach { renderer.drawBullet(it, 0xFF8BA4C4.toInt()) }
+        renderer.spacer(8f)
+
+        insights?.let { ins -> writeInsights(renderer, ins) }
+
+        scans.sortedByDescending { it.scannedAtEpochMs }.forEach { scan ->
+            writeScan(renderer, scan, insights, dateFmt)
+        }
+
+        renderer.finish("— End of report —")
+        out.outputStream().use { doc.writeTo(it) }
+        doc.close()
+        return out
+    }
+
+    private fun drawSignalLegend(renderer: PdfRenderer) {
+        GraphColorPalette.signalLegendEntries().forEach { entry ->
+            renderer.drawLegendEntry(legendArgb(entry.label), entry.label)
+        }
+        renderer.drawLegendEntry(0xFF00AEEF.toInt(), "Place (GPS cluster)")
+    }
+
+    private fun legendArgb(label: String): Int =
+        when (label) {
+            "BLE" -> GraphColorPalette.signalColorArgb(SignalCategory.BLE)
+            "Wi-Fi" -> GraphColorPalette.signalColorArgb(SignalCategory.WIFI)
+            "Bluetooth" -> GraphColorPalette.signalColorArgb(SignalCategory.BLUETOOTH)
+            "NFC" -> GraphColorPalette.signalColorArgb(SignalCategory.NFC)
+            "Sensor" -> GraphColorPalette.signalColorArgb(SignalCategory.SENSORS)
+            "Place" -> 0xFF00AEEF.toInt()
+            else -> 0xFF9AA3B2.toInt()
+        }
+
+    private fun linkColorArgb(label: String): Int =
+        when (label) {
+            "Observed" -> 0xFF8BA4C4.toInt()
+            "At place" -> 0xFF00AEEF.toInt()
+            "Repeat" -> 0xFFFFB020.toInt()
+            "Note" -> 0xFFE040FB.toInt()
+            "EVRUS" -> 0xFF7B61FF.toInt()
+            "Device" -> 0xFFFF4D6D.toInt()
+            else -> 0xFF8BA4C4.toInt()
+        }
+
+    private fun writeInsights(renderer: PdfRenderer, ins: KnowledgeGraphInsights) {
+        renderer.drawHeading("Knowledge graph insights")
+        renderer.drawBody(
+            "${ins.totalScans} saved scans · ${ins.scansWithGps} with GPS · ${ins.uniquePlaces} place clusters",
+        )
+        ins.averageRiskScore?.let { score ->
+            renderer.drawBody("Average risk: $score/100", GraphColorPalette.riskColorArgb(score))
+        }
+        ins.riskTrendNote?.let { renderer.drawMuted(it) }
+        if (ins.placeSummaries.isNotEmpty()) {
+            renderer.drawSubheading("Places (GPS clusters)", 0xFF00AEEF.toInt())
+            ins.placeSummaries.forEach { place ->
+                renderer.drawBullet(
+                    "${place.label} — ${place.scanCount} scan(s) at ${place.coordinates}",
+                    0xFF00AEEF.toInt(),
+                )
+            }
+        }
+        if (ins.recurringSignals.isNotEmpty()) {
+            renderer.drawSubheading(
+                "Recurring signals (${ins.recurringSignals.size} total)",
+                0xFFFFB020.toInt(),
+            )
+            ins.recurringSignals.forEach { sig ->
+                renderer.drawBullet(
+                    "${sig.category.label}: ${sig.label} — seen in ${sig.scanCount} scans" +
+                        sig.detail.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(),
+                    GraphColorPalette.signalColorArgb(sig.category),
+                )
+            }
+        }
+        renderer.spacer(10f)
+    }
+
+    private fun writeScan(
+        renderer: PdfRenderer,
+        scan: ScanSnapshot,
+        insights: KnowledgeGraphInsights?,
+        dateFmt: SimpleDateFormat,
+    ) {
+        renderer.drawHeading(scan.name)
+        renderer.drawMuted(dateFmt.format(Date(scan.scannedAtEpochMs)))
+        scan.geoFix?.let { fix ->
+            renderer.drawBullet(
+                "GPS ${fix.formatCoordinates()} · ${fix.formatAccuracy()} · ${fix.provider}",
+                0xFF00AEEF.toInt(),
+            )
+            fix.altitudeMeters?.let {
+                renderer.drawMuted("Altitude ${"%.0f".format(it)} m")
+            }
+        } ?: renderer.drawMuted("GPS: not recorded")
+
+        val analytics = ScanAnalytics.from(scan.findings, scan.riskSummary)
+        renderer.drawSubheading("Quick summary")
+        analytics.formatDigest().lines().filter { it.isNotBlank() }.forEach { renderer.drawBody(it) }
+        scan.riskSummary?.let { r ->
+            renderer.drawBody(
+                "Risk ${r.level.label} · ${r.score}/100 — ${r.level.description}",
+                GraphColorPalette.riskColorArgb(r.score),
+            )
+            r.highlights.forEach { renderer.drawBullet(it, GraphColorPalette.riskColorArgb(r.score)) }
+        }
+        renderer.drawMuted(
+            "Totals: ${analytics.totalFindings} — ${analytics.bleCount} BLE · ${analytics.wifiCount} Wi-Fi · " +
+                "${analytics.bluetoothCount} BT · ${analytics.nfcCount} NFC · " +
+                "${analytics.sensorCount} sensors · ${analytics.systemCount} status",
+        )
+
+        val scanKeys = KnowledgeGraphBuilder.signalKeysFrom(scan.findings).keys
+        insights?.recurringSignals
+            ?.filter { it.signalKey in scanKeys }
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { recurring ->
+                renderer.drawSubheading("Also seen in other scans", 0xFFFFB020.toInt())
+                recurring.forEach { sig ->
+                    renderer.drawBullet(
+                        "${sig.label} — ${sig.scanCount} scans total",
+                        GraphColorPalette.signalColorArgb(sig.category),
+                    )
+                }
+            }
+
+        renderer.drawSubheading("All signals (${scan.findings.size}) — complete list")
+        reportCategoryOrder.forEach { category ->
+            val group =
+                scan.findings
+                    .filter { it.category == category }
+                    .sortedWith(findingSortOrder(category))
+            if (group.isEmpty()) return@forEach
+            val color = GraphColorPalette.signalColorArgb(category)
+            renderer.drawSubheading("${category.label} (${group.size})", color)
+            group.forEach { finding ->
+                renderer.drawFinding(finding, color)
+            }
+            renderer.spacer(4f)
+        }
+        renderer.spacer(12f)
+    }
+
+    private fun dataCollectionOverview(): List<String> =
+        listOf(
+            "BLE — nearby advertisers (MAC, name, RSSI)",
+            "Wi-Fi — access points (BSSID, SSID, RSSI, hidden SSIDs)",
+            "Bluetooth — paired/bonded devices on this phone",
+            "NFC — hardware present and enabled/disabled",
+            "Sensors — on-phone sensor inventory (not nearby transmitters)",
+            "System — permissions and scan status messages",
+            "GPS — coordinates, accuracy, provider, altitude",
+            "Risk — heuristic score from passive radio patterns",
+            "Knowledge graph — links scans, places, and recurring signals locally",
+        )
+
+    private fun findingSortOrder(category: SignalCategory): Comparator<Finding> =
+        when (category) {
+            SignalCategory.BLE,
+            SignalCategory.WIFI,
+            -> compareByDescending<Finding> { it.signalStrength ?: Int.MIN_VALUE }.thenBy { it.title }
+            SignalCategory.SENSORS -> compareBy { it.title }
+            else -> compareByDescending<Finding> { it.riskPoints }.thenBy { it.title }
+        }
+
+    private class PdfRenderer(private val doc: PdfDocument) {
+        private var pageNum = 1
+        private var pageInfo = PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNum).create()
+        private var page = doc.startPage(pageInfo)
+        private var canvas = page.canvas
+        private var y = MARGIN
+        private val maxTextWidth = PAGE_W - MARGIN * 2
+
+        private val titlePaint =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = 20f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                color = 0xFF1A1A1A.toInt()
             }
-        val headPaint =
+        private val headPaint =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = 14f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                color = 0xFF1A1A1A.toInt()
             }
-        val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 11f }
-        val mutedPaint =
+        private val subheadPaint =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = 10f
-                color = 0xFF666666.toInt()
+                textSize = 11.5f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             }
+        private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 10f; color = 0xFF222222.toInt() }
+        private val mutedPaint =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize = 9.5f
+                color = 0xFF555555.toInt()
+            }
+        private val swatchPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-        var pageNum = 1
-        var pageInfo = PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNum).create()
-        var page = doc.startPage(pageInfo)
-        var canvas = page.canvas
-        var y = MARGIN
-        val maxTextWidth = PAGE_W - MARGIN * 2
+        fun drawTitle(text: String) {
+            ensureSpace(28f)
+            canvas.drawText(text, MARGIN, y, titlePaint)
+            y += 26f
+        }
 
-        fun newPage() {
+        fun drawHeading(text: String) {
+            ensureSpace(22f)
+            y += 8f
+            canvas.drawText(text, MARGIN, y, headPaint)
+            y += 20f
+        }
+
+        fun drawSubheading(text: String, color: Int = 0xFF333333.toInt()) {
+            ensureSpace(18f)
+            subheadPaint.color = color
+            canvas.drawText(text, MARGIN, y, subheadPaint)
+            y += 17f
+        }
+
+        fun drawBody(text: String, color: Int = bodyPaint.color) {
+            bodyPaint.color = color
+            drawWrapped(text, bodyPaint)
+        }
+
+        fun drawMuted(text: String) = drawWrapped(text, mutedPaint)
+
+        fun drawLegendEntry(colorArgb: Int, label: String) {
+            ensureSpace(LINE)
+            swatchPaint.color = colorArgb
+            canvas.drawRoundRect(RectF(MARGIN, y - 9f, MARGIN + 10f, y + 1f), 2f, 2f, swatchPaint)
+            canvas.drawText(label, MARGIN + BULLET_GAP, y, mutedPaint)
+            y += LINE
+        }
+
+        fun drawBullet(text: String, colorArgb: Int) {
+            ensureSpace(LINE)
+            swatchPaint.color = colorArgb
+            canvas.drawCircle(MARGIN + 4f, y - 4f, 4f, swatchPaint)
+            drawWrapped(text, bodyPaint, MARGIN + BULLET_GAP)
+        }
+
+        fun drawFinding(finding: Finding, colorArgb: Int) {
+            val rssi = finding.signalStrength?.let { " · $it dBm" }.orEmpty()
+            val risk = if (finding.riskPoints > 0) " · risk +${finding.riskPoints}" else ""
+            drawBullet("${finding.title} — ${finding.detail}$rssi$risk", colorArgb)
+        }
+
+        fun spacer(px: Float) {
+            y += px
+        }
+
+        fun finish(footer: String) {
+            ensureSpace(LINE)
+            canvas.drawText(footer, MARGIN, PAGE_H - MARGIN, mutedPaint)
+            doc.finishPage(page)
+        }
+
+        private fun newPage() {
             doc.finishPage(page)
             pageNum++
             pageInfo = PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNum).create()
@@ -60,87 +323,63 @@ object ScanReportPdfGenerator {
             y = MARGIN
         }
 
-        fun ensureSpace(needed: Float) {
+        private fun ensureSpace(needed: Float) {
             if (y + needed > PAGE_H - MARGIN) newPage()
         }
 
-        fun drawWrapped(text: String, paint: Paint = bodyPaint) {
-            wrap(text, paint, maxTextWidth).forEach { line ->
+        private fun drawWrapped(text: String, paint: Paint, x: Float = MARGIN) {
+            val width = PAGE_W - x - MARGIN
+            wrap(text, paint, width).forEach { line ->
                 ensureSpace(LINE)
-                canvas.drawText(line, MARGIN, y, paint)
+                canvas.drawText(line, x, y, paint)
                 y += LINE
             }
         }
-
-        canvas.drawText("Signal Scoop — Knowledge Graph Report", MARGIN, y, titlePaint)
-        y += 28f
-        drawWrapped(
-            "Generated ${SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault()).format(Date())}",
-            mutedPaint,
-        )
-        drawWrapped("${scans.size} scan(s) selected · on-device only · Manticore Technologies", mutedPaint)
-        y += 8f
-
-        insights?.let { ins ->
-            ensureSpace(LINE * 3)
-            canvas.drawText("Graph summary", MARGIN, y, headPaint)
-            y += 20f
-            drawWrapped("${ins.totalScans} total scans · ${ins.scansWithGps} with GPS · ${ins.uniquePlaces} places")
-            ins.recurringSignals.take(8).forEach { sig ->
-                drawWrapped("• ${sig.label} — seen ${sig.scanCount}× · ${sig.category.label}")
-            }
-            y += 8f
-        }
-
-        val dateFmt = SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.getDefault())
-        scans.sortedByDescending { it.scannedAtEpochMs }.forEach { scan ->
-            ensureSpace(LINE * 5)
-            canvas.drawText(scan.name, MARGIN, y, headPaint)
-            y += 20f
-            drawWrapped(dateFmt.format(Date(scan.scannedAtEpochMs)), mutedPaint)
-            scan.geoFix?.let { drawWrapped("GPS ${it.formatCoordinates()} · ${it.formatAccuracy()}") }
-            scan.riskSummary?.let { r ->
-                drawWrapped("Risk ${r.level.label} · ${r.score}/100 — ${r.level.description}")
-                r.highlights.forEach { drawWrapped("  • $it") }
-            }
-            val radio =
-                scan.findings.filter {
-                    it.category != SignalCategory.SYSTEM && it.category != SignalCategory.SENSORS
-                }
-            drawWrapped("${radio.size} radio findings:", mutedPaint)
-            radio.take(35).forEach { f ->
-                val rssi = f.signalStrength?.let { " · $it dBm" }.orEmpty()
-                drawWrapped("${f.category.label}: ${f.title} — ${f.detail}$rssi")
-            }
-            if (radio.size > 35) {
-                drawWrapped("… and ${radio.size - 35} more (see app History)", mutedPaint)
-            }
-            y += 12f
-        }
-
-        canvas.drawText("— End of report —", MARGIN, PAGE_H - MARGIN, mutedPaint)
-        doc.finishPage(page)
-        out.outputStream().use { doc.writeTo(it) }
-        doc.close()
-        return out
     }
 
     private fun wrap(text: String, paint: Paint, maxWidth: Float): List<String> {
         if (text.isEmpty()) return listOf("")
-        val words = text.split(' ')
         val lines = mutableListOf<String>()
-        var current = StringBuilder()
-        for (word in words) {
-            val candidate = if (current.isEmpty()) word else "${current} $word"
-            if (paint.measureText(candidate) <= maxWidth) {
-                if (current.isNotEmpty()) current.append(' ')
-                current.append(word)
-            } else {
-                if (current.isNotEmpty()) lines.add(current.toString())
-                current = StringBuilder(word)
+        val paragraphs = text.split('\n')
+        for (paragraph in paragraphs) {
+            if (paragraph.isEmpty()) {
+                lines.add("")
+                continue
             }
+            val words = paragraph.split(' ')
+            var current = StringBuilder()
+            for (word in words) {
+                val candidate = if (current.isEmpty()) word else "${current} $word"
+                if (paint.measureText(candidate) <= maxWidth) {
+                    if (current.isNotEmpty()) current.append(' ')
+                    current.append(word)
+                } else {
+                    if (current.isNotEmpty()) {
+                        lines.add(current.toString())
+                        current = StringBuilder()
+                    }
+                    if (paint.measureText(word) <= maxWidth) {
+                        current.append(word)
+                    } else {
+                        breakLongToken(word, paint, maxWidth, lines)
+                    }
+                }
+            }
+            if (current.isNotEmpty()) lines.add(current.toString())
         }
-        if (current.isNotEmpty()) lines.add(current.toString())
         return lines.ifEmpty { listOf(text) }
+    }
+
+    private fun breakLongToken(token: String, paint: Paint, maxWidth: Float, lines: MutableList<String>) {
+        var start = 0
+        while (start < token.length) {
+            var end = start + 1
+            while (end <= token.length && paint.measureText(token.substring(start, end)) <= maxWidth) {
+                end++
+            }
+            if (end - 1 == start) end = start + 1
+            lines.add(token.substring(start, (end - 1).coerceAtLeast(start + 1)))
+            start = (end - 1).coerceAtLeast(start + 1)
+        }
     }
 }

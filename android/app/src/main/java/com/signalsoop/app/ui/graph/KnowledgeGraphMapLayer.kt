@@ -119,10 +119,18 @@ fun KnowledgeGraphMapLayer(
                     circleDrawable(
                         context,
                         node.color.copy(alpha = alpha).toArgb(),
-                        radiusDp(node.type),
+                        radiusDp(node.type, node.signalCategory),
                     )
                 marker.title = node.label
-                marker.subDescription = node.timeLabel ?: node.rawLabel
+                marker.subDescription =
+                    buildString {
+                        node.signalCategory?.let { append(GraphColorPalette.signalLabel(it)) }
+                        node.timeLabel?.let {
+                            if (isNotEmpty()) append(" · ")
+                            append(it)
+                        }
+                        if (isEmpty()) append(node.rawLabel)
+                    }
                 marker.setOnMarkerClickListener { _, _ ->
                     onNodeSelected(node.id, node.type, node.label)
                     true
@@ -170,11 +178,16 @@ private fun drawLink(
     map.overlays.add(line)
 }
 
-private fun radiusDp(type: String): Int =
+private fun radiusDp(type: String, signalCategory: String?): Int =
     when (type) {
         KnowledgeGraphBuilder.NODE_SCAN -> 22
         KnowledgeGraphBuilder.NODE_PLACE -> 26
-        KnowledgeGraphBuilder.NODE_SIGNAL -> 14
+        KnowledgeGraphBuilder.NODE_SIGNAL ->
+            when (signalCategory?.uppercase()) {
+                "SENSORS" -> 10
+                "NFC" -> 12
+                else -> 14
+            }
         else -> 16
     }
 

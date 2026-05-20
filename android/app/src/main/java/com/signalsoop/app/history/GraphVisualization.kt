@@ -125,6 +125,14 @@ object GraphVisualizationBuilder {
                         }
                     val scanId = obs?.scanId
                     val epoch = scanId?.let { scanEpochById[it] }
+                    val rssi = meta?.optInt("rssi")?.takeIf { it != 0 }
+                    val detail = meta?.optString("detail")?.takeIf { it.isNotBlank() }
+                    val subtitle =
+                        buildList {
+                            rssi?.let { add("$it dBm") }
+                            detail?.let { add(it.take(48)) }
+                            epoch?.let { add(formatTime(it)) }
+                        }.joinToString(" · ")
                     visNodes +=
                         GraphVisNode(
                             id = node.id,
@@ -139,7 +147,7 @@ object GraphVisualizationBuilder {
                             epochMs = epoch,
                             signalCategory = category,
                             linkedScanId = scanId,
-                            timeLabel = epoch?.let { formatTime(it) },
+                            timeLabel = subtitle.ifBlank { epoch?.let { formatTime(it) } },
                         )
                 }
                 else -> {

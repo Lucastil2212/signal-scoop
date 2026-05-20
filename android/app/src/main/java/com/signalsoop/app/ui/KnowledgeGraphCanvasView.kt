@@ -176,7 +176,7 @@ fun KnowledgeGraphCanvasView(
 
             nodes.forEach { node ->
                 val p = toScreen(node)
-                val r = nodeRadius(node.type)
+                val r = nodeRadius(node.type, node.signalCategory)
                 val selected = node.id == selectedId
                 val alpha =
                     GraphColorPalette.alphaForEpoch(
@@ -273,7 +273,7 @@ private fun hitTestNode(
                 size.width / 2f + node.layoutX * scale + pan.x,
                 size.height / 2f + node.layoutY * scale + pan.y,
             )
-        val r = nodeRadius(node.type) + 14f
+        val r = nodeRadius(node.type, node.signalCategory) + 14f
         val dx = offset.x - p.x
         val dy = offset.y - p.y
         val d = sqrt(dx * dx + dy * dy)
@@ -285,11 +285,16 @@ private fun hitTestNode(
     return best
 }
 
-private fun nodeRadius(type: String): Float =
+private fun nodeRadius(type: String, signalCategory: String?): Float =
     when (type) {
         KnowledgeGraphBuilder.NODE_SCAN -> 12f
         KnowledgeGraphBuilder.NODE_PLACE -> 14f
-        KnowledgeGraphBuilder.NODE_SIGNAL -> 8f
+        KnowledgeGraphBuilder.NODE_SIGNAL ->
+            when (signalCategory?.uppercase()) {
+                "SENSORS" -> 6f
+                "NFC" -> 7f
+                else -> 8f
+            }
         "EVRUS", "USER" -> 10f
         "DEVICE" -> 9f
         else -> 9f

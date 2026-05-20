@@ -14,7 +14,7 @@ class QueryClassifierTest {
     @Test
     fun summaryRequiresExplicitWording() {
         assertEquals(QueryIntent.SUMMARY, QueryClassifier.classify("Summarize the scan"))
-        assertEquals(QueryIntent.GENERAL, QueryClassifier.classify("What is the strongest BLE device?"))
+        assertEquals(QueryIntent.LIST_STRONGEST, QueryClassifier.classify("What is the strongest BLE device?"))
         assertEquals(QueryIntent.GENERAL, QueryClassifier.classify("Why are there so many unknown devices?"))
     }
 

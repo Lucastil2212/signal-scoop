@@ -46,30 +46,42 @@ fun KnowledgeGraphGeoTimelineView(
     val showMap = visualization.geoNodeCount > 0
 
     Column(modifier = modifier.fillMaxSize()) {
-        if (showChrome) {
-            GraphGraphChrome(
-                nodeCount = slice.nodes.size,
-                linkCount = slice.links.size,
-                usesMap = showMap,
-                filterLabel = slice.label,
-            )
-        }
-        if (showMap) {
-            KnowledgeGraphMapLayer(
-                visualization = visualization,
-                filterScanId = filterScanId,
-                onNodeSelected = onNodeSelected,
-                onLinkSelected = onLinkSelected,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-            )
-        } else {
-            KnowledgeGraphCanvasView(
-                visualization = visualization,
-                filterScanId = filterScanId,
-                onNodeSelected = onNodeSelected,
-                onLinkSelected = onLinkSelected,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                emptyMessage = emptyMessage,
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            if (showMap) {
+                KnowledgeGraphMapLayer(
+                    visualization = visualization,
+                    filterScanId = filterScanId,
+                    onNodeSelected = onNodeSelected,
+                    onLinkSelected = onLinkSelected,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                KnowledgeGraphCanvasView(
+                    visualization = visualization,
+                    filterScanId = filterScanId,
+                    onNodeSelected = onNodeSelected,
+                    onLinkSelected = onLinkSelected,
+                    modifier = Modifier.fillMaxSize(),
+                    emptyMessage = emptyMessage,
+                )
+            }
+            if (showChrome) {
+                GraphGraphChrome(
+                    nodeCount = slice.nodes.size,
+                    linkCount = slice.links.size,
+                    usesMap = showMap,
+                    filterLabel = slice.label,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth(),
+                )
+            }
+            GraphMapLegendOverlay(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 10.dp, bottom = 10.dp, end = 72.dp),
             )
         }
         if (showTimeline) {

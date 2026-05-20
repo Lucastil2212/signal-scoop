@@ -89,6 +89,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
 
     fun refreshGraphAndInsights() {
         viewModelScope.launch {
+            repository.rebuildKnowledgeGraphFromHistory()
             val insights = repository.buildInsights()
             val json = repository.buildGraphJson()
             val visualization = repository.buildVisualization()
@@ -217,11 +218,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         finding.category != SignalCategory.SYSTEM && finding.category != SignalCategory.SENSORS
 
     private fun signalKeyFromFinding(finding: Finding): String? =
-        when {
-            finding.id.startsWith("ble-") -> finding.id.removePrefix("ble-")
-            finding.id.startsWith("wifi-") -> finding.id.removePrefix("wifi-")
-            else -> finding.id.takeIf { finding.category == SignalCategory.BLUETOOTH }
-        }
+        KnowledgeGraphBuilder.graphSignalKeyFrom(finding)
 
     fun beginRename(id: String, currentName: String) {
         _uiState.update { it.copy(renameTargetId = id, renameDraft = currentName) }
@@ -441,7 +438,8 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             _uiState.update { it.copy(reportGenerating = true) }
             runCatching {
                 val selected = _uiState.value.snapshots.filter { it.id in ids }
-                ScanReportPdfGenerator.write(getApplication(), selected, _uiState.value.insights)
+                val reportInsights = repository.buildInsightsForReport()
+                ScanReportPdfGenerator.write(getApplication(), selected, reportInsights)
             }.onSuccess { file ->
                 _uiState.update {
                     it.copy(

@@ -428,8 +428,4 @@ private fun SignalDetailBlock(
 }
 
 private fun signalKeyFrom(finding: Finding): String? =
-    when {
-        finding.id.startsWith("ble-") -> finding.id.removePrefix("ble-")
-        finding.id.startsWith("wifi-") -> finding.id.removePrefix("wifi-")
-        else -> finding.id.takeIf { finding.category == SignalCategory.BLUETOOTH }
-    }
+    com.signalsoop.app.history.KnowledgeGraphBuilder.graphSignalKeyFrom(finding)

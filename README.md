@@ -41,7 +41,7 @@ Three sub-tabs:
 
 | Sub-tab | What you do |
 |---------|-------------|
-| **Scans** | **Graph insights** → tap to open **full-screen map**. Tap any **scan card** → bottom sheet with **all signals** (filter BLE / Wi-Fi / BT). Checkboxes + **Save PDF** / **Share** for reports. |
+| **Scans** | **Graph insights** → tap to open **full-screen map**. Tap any **scan card** → bottom sheet with **all signals** (filter BLE / Wi-Fi / BT). Checkboxes + **Save PDF** / **Share** for reports (every signal + collection summary per scan). |
 | **Map** | Geo map (Carto dark tiles) or layout fallback when no GPS. **Past scans** strip: tap a chip to filter the map and open that scan’s signals. Tap **nodes** or **lines** for details. **↗** in the top bar = full screen. |
 | **Vault** | Counts and lists for scans, pet names, media, notes, EVRUS links — all on-device. |
 
@@ -69,7 +69,7 @@ Summarize, analyze risk, list BLE/Wi-Fi, etc. work **without** a downloaded mode
 
 - **On-device database** — scans, findings, GPS, risk, graph nodes/edges (Room).
 - **Native map** — OSMDroid + Carto dark basemap when nodes have coordinates; otherwise a **2D canvas** layout.
-- **Color coding** — scan sessions, BLE (cyan), Wi-Fi (amber), Bluetooth (pink), places (blue); link types (observed, at place, repeat).
+- **Color coding** — scan sessions (timeline chips), BLE (cyan), Wi-Fi (amber), Bluetooth (pink), NFC (gold), sensors (purple), places (blue); link types (observed, at place, repeat, notes, EVRUS, devices). Floating **map key** on the graph view.
 - **Scan detail sheet** — full signal list per saved scan, with filters and optional photo/video on the scan.
 - **Graph detail sheet** — tap signals, places, or **relationship lines** for context; scan nodes open the scan sheet.
 - **Copy** icons on findings, risk, insights, and scan rows.

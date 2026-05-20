@@ -5,15 +5,24 @@ import com.signalsoop.app.model.SignalCategory
 
 object GraphColorPalette {
     val place = Color(0xFF00AEEF)
-    val user = Color(0xFFFFB020)
+    val user = Color(0xFFE040FB)
     val evrus = Color(0xFF7B61FF)
     val device = Color(0xFFFF4D6D)
     val linkObserved = Color(0xFF8BA4C4)
     val linkPlace = Color(0xFF00AEEF)
     val linkRepeat = Color(0xFFFFB020)
-    val linkUser = Color(0xFFFFB020)
+    val linkUser = Color(0xFFE040FB)
     val linkEvrus = Color(0xFF7B61FF)
     val linkDevice = Color(0xFFFF4D6D)
+
+    val ble = Color(0xFF7AE7FF)
+    val wifi = Color(0xFFFFB020)
+    val bluetooth = Color(0xFFFF4D6D)
+    val nfc = Color(0xFFFFD54F)
+    val sensors = Color(0xFFB388FF)
+    val system = Color(0xFF9AA3B2)
+
+    data class LegendEntry(val color: Color, val label: String)
 
     private val scanPalette =
         listOf(
@@ -29,11 +38,37 @@ object GraphColorPalette {
 
     fun scanColor(index: Int, total: Int): Color = scanPalette[index.coerceAtLeast(0) % scanPalette.size]
 
+    fun signalColorArgb(category: SignalCategory): Int =
+        when (category) {
+            SignalCategory.BLE -> 0xFF7AE7FF.toInt()
+            SignalCategory.WIFI -> 0xFFFFB020.toInt()
+            SignalCategory.BLUETOOTH -> 0xFFFF4D6D.toInt()
+            SignalCategory.NFC -> 0xFFFFD54F.toInt()
+            SignalCategory.SENSORS -> 0xFFB388FF.toInt()
+            SignalCategory.SYSTEM -> 0xFF9AA3B2.toInt()
+            else -> 0xFFB8ECFF.toInt()
+        }
+
+    fun signalColorArgb(category: String?): Int =
+        category?.let { runCatching { signalColorArgb(SignalCategory.valueOf(it.uppercase())) }.getOrNull() }
+            ?: 0xFFB8ECFF.toInt()
+
+    fun riskColorArgb(score: Int): Int =
+        when {
+            score >= 70 -> 0xFFFF4D6D.toInt()
+            score >= 45 -> 0xFFFFB020.toInt()
+            score >= 20 -> 0xFFFFD54F.toInt()
+            else -> 0xFF39FF14.toInt()
+        }
+
     fun signalColor(category: String?): Color =
         when (category?.uppercase()) {
-            SignalCategory.BLE.name -> Color(0xFF7AE7FF)
-            SignalCategory.WIFI.name -> Color(0xFFFFB020)
-            SignalCategory.BLUETOOTH.name -> Color(0xFFFF4D6D)
+            SignalCategory.BLE.name -> ble
+            SignalCategory.WIFI.name -> wifi
+            SignalCategory.BLUETOOTH.name -> bluetooth
+            SignalCategory.NFC.name -> nfc
+            SignalCategory.SENSORS.name -> sensors
+            SignalCategory.SYSTEM.name -> system
             else -> Color(0xFFB8ECFF)
         }
 
@@ -42,6 +77,9 @@ object GraphColorPalette {
             SignalCategory.BLE.name -> "BLE"
             SignalCategory.WIFI.name -> "Wi-Fi"
             SignalCategory.BLUETOOTH.name -> "Bluetooth"
+            SignalCategory.NFC.name -> "NFC"
+            SignalCategory.SENSORS.name -> "Sensor"
+            SignalCategory.SYSTEM.name -> "System"
             else -> "Signal"
         }
 
@@ -49,11 +87,11 @@ object GraphColorPalette {
         when (type) {
             KnowledgeGraphBuilder.NODE_SCAN -> Color(0xFF39FF14)
             KnowledgeGraphBuilder.NODE_PLACE -> place
-            KnowledgeGraphBuilder.NODE_SIGNAL -> Color(0xFF7AE7FF)
+            KnowledgeGraphBuilder.NODE_SIGNAL -> ble
             "USER" -> user
             "EVRUS" -> evrus
             "DEVICE" -> device
-            else -> Color(0xFF9AA3B2)
+            else -> system
         }
 
     fun relationColor(relation: String): Color =
@@ -91,6 +129,26 @@ object GraphColorPalette {
             "DEVICE_LINK" -> "A device you linked to this signal locally."
             else -> "Relationship in your local knowledge graph."
         }
+
+    fun signalLegendEntries(): List<LegendEntry> =
+        listOf(
+            LegendEntry(ble, "BLE"),
+            LegendEntry(wifi, "Wi-Fi"),
+            LegendEntry(bluetooth, "Bluetooth"),
+            LegendEntry(nfc, "NFC"),
+            LegendEntry(sensors, "Sensor"),
+            LegendEntry(place, "Place"),
+        )
+
+    fun linkLegendEntries(): List<LegendEntry> =
+        listOf(
+            LegendEntry(linkObserved, "Observed"),
+            LegendEntry(linkPlace, "At place"),
+            LegendEntry(linkRepeat, "Repeat"),
+            LegendEntry(linkUser, "Note"),
+            LegendEntry(linkEvrus, "EVRUS"),
+            LegendEntry(linkDevice, "Device"),
+        )
 
     fun alphaForEpoch(epochMs: Long?, timeMin: Long, timeMax: Long, focused: Boolean): Float {
         if (focused) return 1f
