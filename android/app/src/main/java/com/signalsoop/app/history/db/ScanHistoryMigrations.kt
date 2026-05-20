@@ -71,4 +71,55 @@ object ScanHistoryMigrations {
                 )
             }
         }
+
+    val MIGRATION_2_3 =
+        object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS mesh_messages (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        sessionId TEXT NOT NULL,
+                        peerPrincipal TEXT NOT NULL,
+                        direction TEXT NOT NULL,
+                        plaintext TEXT NOT NULL,
+                        sentAtEpochMs INTEGER NOT NULL,
+                        exported INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS mesh_sessions (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        localPrincipal TEXT NOT NULL,
+                        remotePrincipal TEXT NOT NULL,
+                        rootKeyHex TEXT NOT NULL,
+                        sendChainHex TEXT NOT NULL,
+                        sendCounter INTEGER NOT NULL,
+                        recvChainHex TEXT NOT NULL,
+                        recvCounter INTEGER NOT NULL,
+                        dhPubB64 TEXT NOT NULL,
+                        skippedJson TEXT NOT NULL,
+                        peerAddress TEXT,
+                        linkedSignalKey TEXT
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS mesh_peers (
+                        peerId TEXT NOT NULL PRIMARY KEY,
+                        principal TEXT NOT NULL,
+                        displayName TEXT NOT NULL,
+                        host TEXT,
+                        port INTEGER NOT NULL,
+                        bleAddress TEXT,
+                        prekeysJson TEXT,
+                        lastSeenEpochMs INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
 }
