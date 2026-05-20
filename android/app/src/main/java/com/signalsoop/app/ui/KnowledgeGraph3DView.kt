@@ -1,6 +1,7 @@
 package com.signalsoop.app.ui
 
 import android.annotation.SuppressLint
+import android.util.Base64
 import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -33,19 +35,46 @@ fun KnowledgeGraph3DView(
     val safeJson = remember(graphJson) { InputSanitizer.graphJsonForWebView(graphJson) }
     val jsonState = rememberUpdatedState(safeJson)
     var webView by remember { mutableStateOf<WebView?>(null) }
+    var loadGeneration by remember { mutableIntStateOf(0) }
 
-    fun pushGraphToWebView(view: WebView?) {
+    fun pushGraphToWebView(view: WebView?, generation: Int) {
         val viewRef = view ?: return
+        val json = jsonState.value
         viewRef.post {
+            if (generation != loadGeneration) return@post
+            if (json.isNullOrBlank()) {
+                viewRef.evaluateJavascript(
+                    "window.GraphViewer && window.GraphViewer.load('{\"nodes\":[],\"links\":[]}');",
+                    null,
+                )
+                return@post
+            }
+            val b64 = Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
             viewRef.evaluateJavascript(
-                "window.GraphViewer && window.GraphViewer.loadFromAndroid();",
+                """
+                (function(){
+                  if(!window.GraphViewer)return;
+                  var ok=window.GraphViewer.loadFromBase64('$b64');
+                  if(!ok) window.GraphViewer.loadFromAndroid();
+                  window.GraphViewer.onResize && window.GraphViewer.onResize();
+                })();
+                """.trimIndent(),
                 null,
             )
         }
     }
 
+    fun schedulePushes(view: WebView?) {
+        val gen = loadGeneration
+        val delays = longArrayOf(0, 80, 200, 500, 1000)
+        delays.forEach { delay ->
+            view?.postDelayed({ pushGraphToWebView(view, gen) }, delay)
+        }
+    }
+
     DisposableEffect(safeJson) {
-        pushGraphToWebView(webView)
+        loadGeneration++
+        schedulePushes(webView)
         onDispose { }
     }
 
@@ -64,10 +93,11 @@ fun KnowledgeGraph3DView(
                 setLayerType(View.LAYER_TYPE_HARDWARE, null)
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = false
-                settings.allowFileAccess = false
-                settings.allowContentAccess = false
+                // Required so three.min.js loads from the same asset folder as index.html
+                settings.allowFileAccess = true
+                settings.allowContentAccess = true
                 @Suppress("DEPRECATION")
-                settings.allowFileAccessFromFileURLs = false
+                settings.allowFileAccessFromFileURLs = true
                 @Suppress("DEPRECATION")
                 settings.allowUniversalAccessFromFileURLs = false
                 webViewClient =
@@ -81,7 +111,8 @@ fun KnowledgeGraph3DView(
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
-                            pushGraphToWebView(view)
+                            loadGeneration++
+                            schedulePushes(view)
                         }
                     }
                 addJavascriptInterface(
@@ -100,13 +131,22 @@ fun KnowledgeGraph3DView(
                     },
                     "AndroidGraph",
                 )
+                addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+                    (v as? WebView)?.post {
+                        v.evaluateJavascript(
+                            "window.GraphViewer && window.GraphViewer.onResize && window.GraphViewer.onResize();",
+                            null,
+                        )
+                    }
+                }
                 loadUrl("file:///android_asset/knowledge_graph_3d/index.html")
                 webView = this
             }
         },
         update = { view ->
             webView = view
-            pushGraphToWebView(view)
+            loadGeneration++
+            schedulePushes(view)
         },
     )
 }

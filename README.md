@@ -52,7 +52,7 @@ Published by **Manticore Technologies, LLC**.
 
 After each scan, the app shows a **defense score** (0–100) and **sentinel alerts** with a protective playbook, plus a composite **risk score** from the same heuristics (unknown BLE, hidden Wi-Fi, strong RSSI). This is defensive guidance only — not forensic proof of surveillance devices. See [SECURITY.md](SECURITY.md) for mesh limits and storage boundaries.
 
-**Current release:** `1.5.0-beta` (versionCode 6) — home graph preview, full-screen 3D, copy-anywhere, PDF reports.
+**Current release:** `1.5.1-beta` (versionCode 7) — fixed 3D graph rendering, smart labels, polished viewer.
 
 ## Requirements
 

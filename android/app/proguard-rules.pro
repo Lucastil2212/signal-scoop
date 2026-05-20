@@ -19,10 +19,14 @@
 -keep class com.signalsoop.app.evr.** { *; }
 -keep class com.signalsoop.app.mesh.** { *; }
 
-# 3D graph WebView bridge
--keepclassmembers class com.signalsoop.app.ui.KnowledgeGraph3DView$* {
+# 3D graph WebView bridge (release must keep JS interfaces or graph stays blank)
+-keepattributes JavascriptInterface
+-keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
+-keep class com.signalsoop.app.ui.KnowledgeGraph3DView { *; }
+-keep class com.signalsoop.app.ui.KnowledgeGraph3DView$* { *; }
+-keep class com.signalsoop.app.ui.GraphPayloadBridge { *; }
 
 # On-device MediaPipe LiteRT (from cil-graph android client)
 -keep class com.signalsoop.app.llm.** { *; }
