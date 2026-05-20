@@ -47,6 +47,7 @@ import com.signalsoop.app.ui.components.FindingCard
 import com.signalsoop.app.ui.components.RiskCard
 import com.signalsoop.app.ui.components.ManticoreFooter
 import com.signalsoop.app.ui.components.SecurityInfoCard
+import com.signalsoop.app.ui.components.SentinelDefenseCard
 import com.signalsoop.app.model.SignalCategory
 import com.signalsoop.app.ui.theme.ScoopBlack
 import com.signalsoop.app.ui.theme.ScoopBlue
@@ -79,7 +80,7 @@ fun SignalScoopScreen(
                     Column {
                         Text("Signal Scoop", color = ScoopWhite)
                         Text(
-                            "Local network survey",
+                            "Defensive RF sentinel",
                             style = MaterialTheme.typography.bodyMedium,
                             color = ScoopMuted,
                         )
@@ -124,6 +125,10 @@ fun SignalScoopScreen(
 
             uiState.riskSummary?.let { summary ->
                 item { RiskCard(summary = summary) }
+            }
+
+            uiState.sentinelReport?.let { report ->
+                item { SentinelDefenseCard(report = report) }
             }
 
             item {

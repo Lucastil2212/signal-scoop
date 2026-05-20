@@ -3,7 +3,7 @@ package com.signalsoop.app.mesh.transport
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
-import android.util.Log
+import com.signalsoop.app.security.MeshSecurityGuard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Local radio mesh over Wi-Fi (NSD discovery + TCP).
- * BLE device links route to the same hub when peer IP is known.
+ * Accepts only private-LAN peers; frames are size- and rate-limited.
  */
 class RadioMeshHub(
     context: Context,
@@ -45,7 +45,7 @@ class RadioMeshHub(
 
     data class DiscoveredPeer(val peerId: String, val host: String, val port: Int)
 
-    fun start(port: Int = MESH_PORT) {
+    fun start(port: Int = MeshSecurityGuard.MESH_PORT) {
         if (!running.compareAndSet(false, true)) return
         scope.launch { acceptLoop(port) }
         registerService(port)
@@ -62,6 +62,7 @@ class RadioMeshHub(
     }
 
     fun broadcast(frame: ByteArray) {
+        if (frame.size > MeshSecurityGuard.MAX_WIRE_FRAME_BYTES) return
         scope.launch {
             connectedWriters.values.forEach { writer ->
                 runCatching {
@@ -76,18 +77,22 @@ class RadioMeshHub(
     }
 
     fun connect(peer: DiscoveredPeer) {
+        if (!MeshSecurityGuard.isAllowedMeshPeerHost(peer.host)) return
         scope.launch {
             runCatching {
+                if (!MeshSecurityGuard.canAcceptAnotherPeer(connectedWriters.size)) return@launch
                 val socket = Socket()
                 socket.connect(InetSocketAddress(peer.host, peer.port), 5_000)
                 attachSocket(peer.peerId, socket)
-            }.onFailure { Log.w(TAG, "connect failed: ${it.message}") }
+            }
         }
     }
 
     fun connectHost(host: String, port: Int, peerId: String) {
+        if (!MeshSecurityGuard.isAllowedMeshPeerHost(host)) return
         scope.launch {
             runCatching {
+                if (!MeshSecurityGuard.canAcceptAnotherPeer(connectedWriters.size)) return@launch
                 val socket = Socket()
                 socket.connect(InetSocketAddress(host, port), 5_000)
                 attachSocket(peerId, socket)
@@ -100,9 +105,18 @@ class RadioMeshHub(
             serverSocket = ServerSocket(port)
             while (running.get()) {
                 val socket = serverSocket?.accept() ?: break
-                attachSocket("peer-${socket.inetAddress.hostAddress}", socket)
+                val host = socket.inetAddress?.hostAddress ?: continue
+                if (!MeshSecurityGuard.isAllowedMeshPeerHost(host)) {
+                    socket.close()
+                    continue
+                }
+                if (!MeshSecurityGuard.canAcceptAnotherPeer(connectedWriters.size)) {
+                    socket.close()
+                    continue
+                }
+                attachSocket("peer-$host", socket)
             }
-        }.onFailure { Log.w(TAG, "accept loop: ${it.message}") }
+        }
     }
 
     private fun attachSocket(peerId: String, socket: Socket) {
@@ -112,7 +126,7 @@ class RadioMeshHub(
             connectedWriters[peerId] = output
             while (running.get() && !socket.isClosed) {
                 val size = runCatching { input.readInt() }.getOrNull() ?: break
-                if (size <= 0 || size > MAX_FRAME) break
+                if (!MeshSecurityGuard.acceptInboundFrame(size)) break
                 val buf = ByteArray(size)
                 input.readFully(buf)
                 _inbound.emit(buf)
@@ -155,6 +169,7 @@ class RadioMeshHub(
                                 override fun onResolveFailed(info: NsdServiceInfo, code: Int) = Unit
                                 override fun onServiceResolved(info: NsdServiceInfo) {
                                     val host = info.host?.hostAddress ?: return
+                                    if (!MeshSecurityGuard.isAllowedMeshPeerHost(host)) return
                                     val peerId = info.serviceName.removePrefix("$SERVICE_NAME-")
                                     scope.launch {
                                         _peers.emit(DiscoveredPeer(peerId, host, info.port))
@@ -171,10 +186,8 @@ class RadioMeshHub(
     }
 
     companion object {
-        private const val TAG = "RadioMeshHub"
-        const val MESH_PORT = 28777
+        const val MESH_PORT = MeshSecurityGuard.MESH_PORT
         const val SERVICE_TYPE = "_signalscoop-mesh._tcp."
         const val SERVICE_NAME = "signalscoop"
-        const val MAX_FRAME = 512 * 1024
     }
 }

@@ -65,13 +65,13 @@ class LocalEvrusConnector(
 
         if (isCompanionAvailable()) {
             runCatching {
-                context.sendBroadcast(
+                val intent =
                     Intent(ACTION_BIND_IDENTITY).setPackage(EVRUS_PACKAGE).apply {
                         putExtra("signalKey", signalKey)
                         putExtra("evrusDid", did)
                         putExtra("scanId", scanId)
-                    },
-                )
+                    }
+                sendExplicitBroadcast(intent)
             }
         }
 
@@ -89,15 +89,21 @@ class LocalEvrusConnector(
         val anchor = "evrmore:anchor:local:$digestSha256"
         if (isCompanionAvailable()) {
             runCatching {
-                context.sendBroadcast(
+                val intent =
                     Intent(ACTION_EVRMORE_ANCHOR).setPackage(EVRUS_PACKAGE).apply {
                         putExtra("digest", digestSha256)
                         putExtra("anchorRef", anchor)
-                    },
-                )
+                    }
+                sendExplicitBroadcast(intent)
             }
         }
         return Result.success(anchor)
+    }
+
+    /** Explicit package only — never implicit broadcast of identity data. */
+    private fun sendExplicitBroadcast(intent: Intent) {
+        requireNotNull(intent.`package`) { "EVRUS intents must call setPackage()" }
+        context.sendBroadcast(intent)
     }
 
     fun digestOf(text: String): String {

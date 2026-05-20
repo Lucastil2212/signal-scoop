@@ -1,6 +1,6 @@
 # Signal Scoop
 
-**Signal Scoop** is a privacy-first Android app that surveys **local wireless signals** around your phone: BLE beacons, Wi-Fi access points, paired Bluetooth devices, NFC status, and onboard sensors. Everything runs **on-device** — no accounts, no cloud, no tracking.
+**Signal Scoop** is a privacy-first Android **defensive sentinel** that surveys **local wireless signals** around your phone: BLE beacons, Wi-Fi access points, paired Bluetooth devices, NFC status, and onboard sensors. After each scan it flags hacking/surveillance-style patterns (unknown BLE, hidden Wi-Fi, strong proximate RSSI) with actionable guidance. Everything runs **on-device** — no accounts, no cloud, no tracking.
 
 <p align="center">
   <img src="SIGNAL%20SCOOP%20LOGO.png" alt="Signal Scoop logo" width="220" />
@@ -46,9 +46,11 @@ Crypto and wire format align with [evrus-v0](https://github.com/contextgraph/cil
 
 Published by **Manticore Technologies, LLC**.
 
-### Risk summary
+### Defense sentinel & risk summary
 
-After each scan, the app shows a simple **risk score** (0–100) based on heuristics such as unknown BLE names, hidden Wi-Fi SSIDs, and very strong nearby RSSI. This is guidance only — not a guarantee of surveillance devices.
+After each scan, the app shows a **defense score** (0–100) and **sentinel alerts** with a protective playbook, plus a composite **risk score** from the same heuristics (unknown BLE, hidden Wi-Fi, strong RSSI). This is defensive guidance only — not forensic proof of surveillance devices. See [SECURITY.md](SECURITY.md) for mesh limits and storage boundaries.
+
+**Current release:** `1.4.0-beta` (versionCode 5).
 
 ## Requirements
 

@@ -12,6 +12,7 @@ import com.signalsoop.app.history.ScanSnapshot
 import com.signalsoop.app.scan.GpsLocationCapture
 import com.signalsoop.app.scan.ScanCoordinator
 import com.signalsoop.app.scan.ScanPermissions
+import com.signalsoop.app.security.DefenseSentinel
 import com.signalsoop.app.security.PermissionGuard
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -29,6 +30,7 @@ data class ScanUiState(
     val riskSummary: RiskSummary? = null,
     val lastGeoFix: ScanGeoFix? = null,
     val lastSavedSnapshot: ScanSnapshot? = null,
+    val sentinelReport: DefenseSentinel.SentinelReport? = null,
     val selectedCategory: SignalCategory = SignalCategory.ALL,
     val permissionNeeded: Boolean = false,
 )
@@ -73,6 +75,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     riskSummary = null,
                     lastGeoFix = null,
                     lastSavedSnapshot = null,
+                    sentinelReport = null,
                 )
             }
 
@@ -91,7 +94,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                         _uiState.update { state -> state.copy(statusMessage = message) }
                     }
                 val geoFix = locationJob.await()
-                val risk = RiskScorer.summarize(results.filter { it.category != SignalCategory.SYSTEM })
+                val filtered = results.filter { it.category != SignalCategory.SYSTEM }
+                val risk = RiskScorer.summarize(filtered)
+                val sentinel = DefenseSentinel.analyze(filtered, risk)
                 val saved =
                     app.scanHistoryRepository.saveScan(
                         findings = results,
@@ -113,6 +118,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                         riskSummary = risk,
                         lastGeoFix = geoFix,
                         lastSavedSnapshot = saved,
+                        sentinelReport = sentinel,
                         statusMessage = status,
                     )
                 }
@@ -142,6 +148,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 riskSummary = null,
                 lastGeoFix = null,
                 lastSavedSnapshot = null,
+                sentinelReport = null,
                 statusMessage = "Live results cleared. Saved scans remain in History on this device.",
             )
         }

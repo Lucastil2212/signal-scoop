@@ -2,6 +2,7 @@ package com.signalsoop.app.ui
 
 import android.annotation.SuppressLint
 import android.webkit.JavascriptInterface
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.signalsoop.app.security.InputSanitizer
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -21,15 +23,15 @@ fun KnowledgeGraph3DView(
     onNodeSelected: (nodeId: String, label: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val safeJson = remember(graphJson) { InputSanitizer.graphJsonForWebView(graphJson) }
     var webView by remember { mutableStateOf<WebView?>(null) }
 
-    LaunchedEffect(graphJson) {
-        if (graphJson.isNotBlank()) {
-            webView?.evaluateJavascript(
-                "window.GraphViewer && window.GraphViewer.load(${graphJson.quoteJs()});",
-                null,
-            )
-        }
+    LaunchedEffect(safeJson) {
+        val json = safeJson ?: return@LaunchedEffect
+        webView?.evaluateJavascript(
+            "window.GraphViewer && window.GraphViewer.load(${json.quoteJs()});",
+            null,
+        )
     }
 
     AndroidView(
@@ -38,24 +40,39 @@ fun KnowledgeGraph3DView(
             WebView(context).apply {
                 setBackgroundColor(0xFF0A0A0F.toInt())
                 settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.allowFileAccess = true
+                settings.domStorageEnabled = false
+                settings.allowFileAccess = false
+                settings.allowContentAccess = false
+                @Suppress("DEPRECATION")
+                settings.allowFileAccessFromFileURLs = false
+                @Suppress("DEPRECATION")
+                settings.allowUniversalAccessFromFileURLs = false
                 webViewClient =
                     object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                        ): Boolean {
+                            val url = request?.url?.toString().orEmpty()
+                            return !url.startsWith("file:///android_asset/")
+                        }
+
                         override fun onPageFinished(view: WebView?, url: String?) {
-                            if (graphJson.isNotBlank()) {
-                                evaluateJavascript(
-                                    "window.GraphViewer && window.GraphViewer.load(${graphJson.quoteJs()});",
-                                    null,
-                                )
-                            }
+                            val json = safeJson ?: return
+                            evaluateJavascript(
+                                "window.GraphViewer && window.GraphViewer.load(${json.quoteJs()});",
+                                null,
+                            )
                         }
                     }
                 addJavascriptInterface(
                     object {
                         @JavascriptInterface
                         fun onNodeSelected(nodeId: String, label: String) {
-                            onNodeSelected(nodeId, label)
+                            onNodeSelected(
+                                InputSanitizer.javascriptLabel(nodeId),
+                                InputSanitizer.javascriptLabel(label),
+                            )
                         }
                     },
                     "AndroidGraph",

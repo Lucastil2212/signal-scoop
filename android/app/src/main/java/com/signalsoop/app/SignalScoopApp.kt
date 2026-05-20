@@ -9,6 +9,8 @@ import com.signalsoop.app.history.db.ScanHistoryDatabase
 import com.signalsoop.app.mesh.db.MeshDao
 import com.signalsoop.app.llm.MpLlmInference
 import com.signalsoop.app.prefs.LlmPrefs
+import com.signalsoop.app.security.AppLifecycleGuard
+import com.signalsoop.app.security.SecurePrefs
 import java.util.UUID
 
 class SignalScoopApp : Application() {
@@ -28,14 +30,17 @@ class SignalScoopApp : Application() {
     lateinit var meshDao: MeshDao
         private set
 
-    val deviceMeshId: String by lazy {
-        val prefs = getSharedPreferences("mesh_device", MODE_PRIVATE)
-        prefs.getString("mesh_id", null)
-            ?: UUID.randomUUID().toString().also { prefs.edit().putString("mesh_id", it).apply() }
-    }
+    private lateinit var securePrefs: SecurePrefs
+
+    val deviceMeshId: String
+        get() =
+            securePrefs.meshDeviceId
+                ?: UUID.randomUUID().toString().also { securePrefs.meshDeviceId = it }
 
     override fun onCreate() {
         super.onCreate()
+        securePrefs = SecurePrefs(this)
+        AppLifecycleGuard.install()
         llmPrefs = LlmPrefs(this)
         scanAssistant = ScanAssistant(llm)
         val historyDb = ScanHistoryDatabase.create(this)

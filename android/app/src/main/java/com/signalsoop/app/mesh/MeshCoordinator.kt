@@ -8,6 +8,8 @@ import com.signalsoop.app.mesh.db.MeshPeerEntity
 import com.signalsoop.app.mesh.db.MeshSessionEntity
 import com.signalsoop.app.mesh.transport.RadioMeshHub
 import com.signalsoop.app.mesh.voice.VoiceMeshEngine
+import com.signalsoop.app.security.InputSanitizer
+import com.signalsoop.app.security.MeshSecurityGuard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -52,6 +54,7 @@ class MeshCoordinator(
     }
 
     suspend fun connectToPeer(peer: RadioMeshHub.DiscoveredPeer, displayName: String, signalKey: String?) {
+        if (!MeshSecurityGuard.isAllowedMeshPeerHost(peer.host)) return
         hub.connect(peer)
         dao.upsertPeer(
             MeshPeerEntity(
@@ -95,13 +98,14 @@ class MeshCoordinator(
     }
 
     suspend fun sendText(sessionId: String, plaintext: String): Boolean {
+        val safe = InputSanitizer.meshMessage(plaintext) ?: return false
         val session = sessions[sessionId] ?: loadSession(sessionId) ?: return false
         val counter = session.sendCounter
         val (enc, nextCk) =
             MeshCrypto.encryptMessage(
                 session.sendChainHex,
                 counter,
-                plaintext,
+                safe,
                 sessionId,
                 session.localPrincipal,
                 session.remotePrincipal,
@@ -131,7 +135,7 @@ class MeshCoordinator(
                 sessionId = sessionId,
                 peerPrincipal = session.remotePrincipal,
                 direction = "out",
-                plaintext = plaintext,
+                plaintext = safe,
                 sentAtEpochMs = System.currentTimeMillis(),
                 exported = false,
             ),
@@ -150,6 +154,8 @@ class MeshCoordinator(
     }
 
     private suspend fun handleInbound(bytes: ByteArray) {
+        if (!MeshSecurityGuard.acceptInboundFrame(bytes.size)) return
+        InputSanitizer.wireJson(bytes) ?: return
         val json = MeshWire.parse(bytes) ?: return
         when (json.optString("kind")) {
             MeshWire.KIND_PREKEYS -> {
@@ -166,7 +172,9 @@ class MeshCoordinator(
             }
             MeshWire.KIND_VOICE -> {
                 val pcm = json.optString("pcm")
-                if (pcm.isNotEmpty()) voiceEngine?.playInbound(pcm)
+                if (pcm.isNotEmpty() && pcm.length <= MeshSecurityGuard.MAX_VOICE_PCM_BYTES * 2) {
+                    voiceEngine?.playInbound(pcm)
+                }
             }
         }
     }

@@ -11,6 +11,8 @@ import com.signalsoop.app.mesh.crypto.MeshCrypto
 import com.signalsoop.app.mesh.db.MeshMessageEntity
 import com.signalsoop.app.mesh.db.MeshPeerEntity
 import com.signalsoop.app.mesh.transport.RadioMeshHub
+import com.signalsoop.app.security.InputSanitizer
+import com.signalsoop.app.security.MeshRadioRegistry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +50,7 @@ class MeshViewModel(application: Application) : AndroidViewModel(application) {
         repository.peers.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
+        MeshRadioRegistry.stopRadio = { coordinator.stopRadio() }
         coordinator.peers
             .onEach { peer ->
                 _uiState.update { it.copy(nearbyPeers = it.nearbyPeers + peer) }
@@ -111,13 +114,13 @@ class MeshViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setComposeText(text: String) {
-        _uiState.update { it.copy(composeText = text) }
+        val capped = text.take(InputSanitizer.MAX_MESH_MESSAGE_CHARS)
+        _uiState.update { it.copy(composeText = capped) }
     }
 
     fun sendText() {
         val sessionId = _uiState.value.activeSessionId ?: return
-        val text = _uiState.value.composeText.trim()
-        if (text.isEmpty()) return
+        val text = InputSanitizer.meshMessage(_uiState.value.composeText) ?: return
         viewModelScope.launch {
             val ok = coordinator.sendText(sessionId, text)
             _uiState.update {
@@ -160,6 +163,7 @@ class MeshViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        MeshRadioRegistry.stopRadio = null
         coordinator.stopRadio()
         super.onCleared()
     }

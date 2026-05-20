@@ -3,7 +3,7 @@
 **Publisher:** Manticore Technologies, LLC  
 **Product:** Signal Scoop
 
-Signal Scoop is designed as a **local, read-only radio survey** on your own phone. This document describes how we handle permissions, data, and threat boundaries.
+Signal Scoop is designed as a **local, read-only radio survey** and **defensive hacking sentinel** on your own phone. It detects hostile-radio patterns (unknown BLE, hidden Wi-Fi, strong proximate RSSI) and recommends protective actions — never offensive tooling. This document describes permissions, data, mesh boundaries, and threat model.
 
 ## Scope (what we do)
 
@@ -11,7 +11,8 @@ Signal Scoop is designed as a **local, read-only radio survey** on your own phon
 - Run scans only when you tap **Scan** and only while the app is in the foreground.
 - Capture a **native GPS fix** at scan time (platform `LocationManager`, GPS provider) when location is enabled.
 - **Save scans locally** in an app-private Room database (findings, risk, timestamp, coordinates, user-visible name).
-- Build a **local knowledge graph** (places, recurring signals, scan links) for the History tab — never transmitted.
+- Build a **local knowledge graph** (places, recurring signals, scan links) for the Graph tab — never transmitted.
+- Run a **defense sentinel** after each scan (heuristic alerts + playbook; not forensic proof).
 - Keep the **active session** in memory; live results clear when you leave the app. Saved History remains on-device until you delete it.
 
 ## Out of scope (what we never do)
@@ -23,6 +24,20 @@ Signal Scoop is designed as a **local, read-only radio survey** on your own phon
 - No connecting to, pairing with, or deauthenticating remote devices.
 - No exploitation, fingerprinting of private devices beyond what the OS exposes to apps, or bypassing Android security controls.
 - No background scanning; scans stop when you leave the app.
+
+## Connect mesh (optional, local only)
+
+- **LAN-only:** TCP mesh accepts connections only from private RFC1918 / link-local addresses; outbound connects are rejected otherwise.
+- **Limits:** 256 KiB max wire frame, 40 frames/s inbound, max 8 TCP peers, 4 KiB max plaintext message.
+- **Crypto:** X3DH + Double Ratchet (ChaCha20-Poly1305); prekeys verified before sessions.
+- **Lifecycle:** Mesh radio stops when the app leaves the foreground (`ProcessLifecycleOwner`).
+- **No internet relay:** NSD + TCP on port 28777; no cloud inbox.
+
+## Storage & WebView
+
+- **Mesh device ID:** `EncryptedSharedPreferences` (AES-256-GCM).
+- **History DB:** App-private Room (not SQLCipher; protect device with lock screen).
+- **3D graph WebView:** Asset-only `file://` URLs; file access disabled; graph JSON size-capped before injection.
 
 ## Permissions
 

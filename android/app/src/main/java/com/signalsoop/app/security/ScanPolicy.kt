@@ -12,6 +12,7 @@ object ScanPolicy {
     const val MAX_WIFI_WAIT_MS = 12_000L
 
     val privacyBullets = listOf(
+        "Defense sentinel: passive RF survey for surveillance/hacking indicators — never offensive tooling.",
         "No accounts or cloud analytics. Scan results never leave your phone.",
         "Optional HTTPS download only fetches a local LLM checkpoint (.task) when you tap Download.",
         "Ask uses an on-device model; answers use your current scan and local history only.",
@@ -20,6 +21,8 @@ object ScanPolicy {
         "GPS fixes use the phone’s native location stack — never sent off-device.",
         "We do not connect to, pair with, or attack nearby devices.",
         "Screenshots and recent-apps preview are blocked on the results screen.",
+        "Connect mesh: LAN-only peers, E2EE text, rate/size limits; radio stops when the app backgrounds.",
+        "Mesh device ID stored in encrypted prefs; graph WebView cannot load external URLs.",
     )
 
     val permissionBullets = listOf(
