@@ -4,6 +4,8 @@
 
     <!-- HTTPS only: optional one-time LiteRT .task download (user-initiated). Scan data never sent. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Session context VPN flag (ConnectivityManager); normal permission, no runtime prompt. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <uses-feature
         android:name="android.hardware.bluetooth_le"
