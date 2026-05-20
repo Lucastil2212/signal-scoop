@@ -9,4 +9,7 @@
     <files-path
         name="graph_media"
         path="graph_media/" />
+    <files-path
+        name="mesh_exports"
+        path="mesh_exports/" />
 </paths>
