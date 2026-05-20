@@ -32,8 +32,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -71,10 +73,21 @@ fun SignalScoopScreen(
     val uiState by viewModel.uiState.collectAsState()
     val historyState by historyViewModel.uiState.collectAsState()
     val insights = historyState.insights
-    val filtered = if (uiState.selectedCategory == SignalCategory.ALL) {
-        uiState.findings
-    } else {
-        uiState.findings.filter { it.category == uiState.selectedCategory }
+    val listState = rememberLazyListState()
+    val radioFindings =
+        uiState.findings.filter {
+            it.category != SignalCategory.SYSTEM && it.category != SignalCategory.ALL
+        }
+    val filtered =
+        when (uiState.selectedCategory) {
+            SignalCategory.ALL -> uiState.findings.filter { it.category != SignalCategory.SYSTEM }
+            else -> uiState.findings.filter { it.category == uiState.selectedCategory }
+        }
+
+    LaunchedEffect(uiState.findings.size, uiState.isScanning) {
+        if (!uiState.isScanning && uiState.findings.isNotEmpty()) {
+            listState.animateScrollToItem(3)
+        }
     }
 
     Scaffold(
@@ -97,6 +110,7 @@ fun SignalScoopScreen(
         },
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -111,30 +125,6 @@ fun SignalScoopScreen(
             }
 
             item {
-                HeroHeader()
-            }
-
-            item {
-                SecurityInfoCard()
-            }
-
-            item {
-                KnowledgeGraphPreviewCard(
-                    visualization = historyState.graphVisualization,
-                    filterScanId = historyState.graphFilterScanId,
-                    onFilterScanChange = historyViewModel::setGraphTimelineFilter,
-                    scanCount = insights?.totalScans ?: historyState.snapshots.size,
-                    placeCount = insights?.uniquePlaces ?: 0,
-                    signalCount = insights?.recurringSignals?.size ?: 0,
-                    onOpenFullscreen = onOpenGraphFullscreen,
-                    onOpenGraphTab = onOpenGraphTab,
-                    onNodeSelected = historyViewModel::onGraphNodeSelected,
-                    onLinkSelected = historyViewModel::onGraphLinkSelected,
-                    onOpenScanDetail = historyViewModel::openScanDetail,
-                )
-            }
-
-            item {
                 Text(
                     uiState.statusMessage,
                     style = MaterialTheme.typography.bodyMedium,
@@ -142,19 +132,21 @@ fun SignalScoopScreen(
                 )
             }
 
-            uiState.riskSummary?.let { summary ->
-                item { RiskCard(summary = summary) }
-            }
-
-            uiState.sentinelReport?.let { report ->
-                item { SentinelDefenseCard(report = report) }
-            }
-
             item {
                 CategoryFilters(
                     selected = uiState.selectedCategory,
                     onSelect = viewModel::selectCategory,
                 )
+            }
+
+            if (radioFindings.isNotEmpty()) {
+                item {
+                    Text(
+                        "${radioFindings.size} signals in this scan",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = ScoopGreen,
+                    )
+                }
             }
 
             if (uiState.isScanning && uiState.findings.isEmpty()) {
@@ -176,11 +168,49 @@ fun SignalScoopScreen(
                 }
             }
 
+            if (!uiState.isScanning && uiState.findings.isNotEmpty() && filtered.isEmpty()) {
+                item {
+                    FilteredEmptyState(selected = uiState.selectedCategory)
+                }
+            }
+
             items(
                 filtered,
                 key = { finding -> "${finding.id}-${finding.category}-${finding.title}" },
             ) { finding ->
                 FindingCard(finding = finding)
+            }
+
+            uiState.riskSummary?.let { summary ->
+                item { RiskCard(summary = summary) }
+            }
+
+            uiState.sentinelReport?.let { report ->
+                item { SentinelDefenseCard(report = report) }
+            }
+
+            item {
+                KnowledgeGraphPreviewCard(
+                    visualization = historyState.graphVisualization,
+                    filterScanId = historyState.graphFilterScanId,
+                    onFilterScanChange = historyViewModel::setGraphTimelineFilter,
+                    scanCount = insights?.totalScans ?: historyState.snapshots.size,
+                    placeCount = insights?.uniquePlaces ?: 0,
+                    signalCount = insights?.recurringSignals?.size ?: 0,
+                    onOpenFullscreen = onOpenGraphFullscreen,
+                    onOpenGraphTab = onOpenGraphTab,
+                    onNodeSelected = historyViewModel::onGraphNodeSelected,
+                    onLinkSelected = historyViewModel::onGraphLinkSelected,
+                    onOpenScanDetail = historyViewModel::openScanDetail,
+                )
+            }
+
+            item {
+                HeroHeader()
+            }
+
+            item {
+                SecurityInfoCard()
             }
 
             item { ManticoreFooter() }
@@ -286,6 +316,30 @@ private fun CategoryFilters(
                 ),
             )
         }
+    }
+}
+
+@Composable
+private fun FilteredEmptyState(selected: SignalCategory) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            "No ${selected.label} signals in this scan",
+            style = MaterialTheme.typography.titleMedium,
+            color = ScoopWhite,
+        )
+        Text(
+            "Tap All to see everything found, or run another scan.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = ScoopMuted,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

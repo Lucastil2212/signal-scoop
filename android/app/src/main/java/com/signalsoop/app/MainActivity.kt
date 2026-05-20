@@ -58,20 +58,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.refreshPermissionState()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        if (!requestingPermissions && !isChangingConfigurations) {
-            viewModel.clearSensitiveResults()
-        }
-    }
-
-    override fun onDestroy() {
-        if (!isChangingConfigurations) {
-            viewModel.clearSensitiveResults()
-        }
-        super.onDestroy()
+        viewModel.restoreLatestResultsIfEmpty()
     }
 
     private fun requestPermissionsThenScan() {
@@ -80,7 +67,7 @@ class MainActivity : ComponentActivity() {
             requestingPermissions = true
             permissionLauncher.launch(missing)
         } else {
-            viewModel.startScan()
+            viewModel.startScan(onNeedPermissions = { requestPermissionsThenScan() })
         }
     }
 }

@@ -23,6 +23,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -46,6 +50,16 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(ScanUiState())
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
     private var scanJob: Job? = null
+
+    init {
+        ProcessLifecycleOwner.get().lifecycle.addObserver(
+            object : DefaultLifecycleObserver {
+                override fun onStop(owner: LifecycleOwner) {
+                    clearSensitiveResults()
+                }
+            },
+        )
+    }
 
     fun refreshPermissionState() {
         val missing = ScanPermissions.missing(getApplication())
@@ -164,9 +178,10 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                             findings = results,
                             riskSummary = risk,
                             lastGeoFix = geoFix,
-                            lastSavedSnapshot = saved,
+                            lastSavedSnapshot = saved ?: it.lastSavedSnapshot,
                             sentinelReport = sentinel,
                             statusMessage = status,
+                            selectedCategory = SignalCategory.ALL,
                         )
                     }
                 } catch (_: CancellationException) {
@@ -194,7 +209,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(isScanning = false, statusMessage = "Scan cancelled.") }
     }
 
-    /** Clears sensitive in-memory results when the app is no longer visible. */
+    /** Clears live results when the app leaves the foreground (not on every Activity onStop). */
     fun clearSensitiveResults() {
         if (_uiState.value.isScanning) return
         scanJob?.cancel()
@@ -205,10 +220,45 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 findings = emptyList(),
                 riskSummary = null,
                 lastGeoFix = null,
-                lastSavedSnapshot = null,
                 sentinelReport = null,
                 statusMessage = "Live results cleared. Saved scans remain in History on this device.",
             )
+        }
+    }
+
+    /** Re-show the most recent saved scan after the UI was cleared in the background. */
+    fun restoreLatestResultsIfEmpty() {
+        if (_uiState.value.findings.isNotEmpty() || _uiState.value.isScanning) return
+        val cached = _uiState.value.lastSavedSnapshot
+        if (cached != null) {
+            _uiState.update {
+                it.copy(
+                    findings = cached.findings,
+                    riskSummary = cached.riskSummary,
+                    lastGeoFix = cached.geoFix,
+                    lastSavedSnapshot = cached,
+                    statusMessage = "Showing last scan · ${cached.findings.size} findings (from History)",
+                    selectedCategory = SignalCategory.ALL,
+                )
+            }
+            return
+        }
+        viewModelScope.launch {
+            val latest =
+                runCatching { app.scanHistoryRepository.snapshots.first().firstOrNull() }
+                    .getOrNull()
+            if (latest != null) {
+                _uiState.update {
+                    it.copy(
+                        findings = latest.findings,
+                        riskSummary = latest.riskSummary,
+                        lastGeoFix = latest.geoFix,
+                        lastSavedSnapshot = latest,
+                        statusMessage = "Showing last scan · ${latest.findings.size} findings (from History)",
+                        selectedCategory = SignalCategory.ALL,
+                    )
+                }
+            }
         }
     }
 
