@@ -176,9 +176,13 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun setGraphTimelineFilter(scanId: String?) {
+        val scanNodeId = scanId?.let { KnowledgeGraphBuilder.scanNodeId(it) }
         _uiState.update {
             it.copy(
                 graphFilterScanId = scanId,
+                selectedGraphNode = scanNodeId,
+                graphDetailNodeId = null,
+                graphDetailLink = null,
                 scanDetailScanId = if (scanId == null) null else it.scanDetailScanId,
             )
         }

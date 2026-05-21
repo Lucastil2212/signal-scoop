@@ -22,6 +22,7 @@ import com.signalsoop.app.history.KnowledgeGraphBuilder
 import com.signalsoop.app.history.key
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
@@ -55,6 +56,8 @@ fun KnowledgeGraphMapLayer(
 ) {
     val context = LocalContext.current
     val slice = remember(visualization, filterScanId) { GraphTimelineFilter.slice(visualization, filterScanId) }
+    val highlightedScanNodeId =
+        remember(filterScanId) { filterScanId?.let { KnowledgeGraphBuilder.scanNodeId(it) } }
     val geoNodes =
         remember(slice) {
             slice.nodes
@@ -76,25 +79,17 @@ fun KnowledgeGraphMapLayer(
         }
     }
 
-    LaunchedEffect(geoNodes) {
+    LaunchedEffect(filterScanId, visualization, geoNodes) {
         if (geoNodes.isEmpty()) return@LaunchedEffect
-        val lats = geoNodes.mapNotNull { it.lat }
-        val lons = geoNodes.mapNotNull { it.lon }
-        val center =
-            GeoPoint(
-                lats.average(),
-                lons.average(),
-            )
-        mapView.controller.setCenter(center)
-        val span = maxOf(lats.max() - lats.min(), lons.max() - lons.min(), 0.002)
-        val zoom =
+        val points = geoNodes.map { GeoPoint(it.lat!!, it.lon!!) }
+        mapView.post {
             when {
-                span > 0.5 -> 10.0
-                span > 0.1 -> 12.0
-                span > 0.02 -> 14.0
-                else -> 16.0
+                points.size == 1 -> mapView.controller.animateTo(points.first(), 16.0, 450L)
+                filterScanId != null ->
+                    mapView.zoomToBoundingBox(BoundingBox.fromGeoPoints(points), true, 96)
+                else -> mapView.zoomToBoundingBox(BoundingBox.fromGeoPoints(points), true, 72)
             }
-        mapView.controller.setZoom(zoom)
+        }
     }
 
     AndroidView(
@@ -117,6 +112,7 @@ fun KnowledgeGraphMapLayer(
                         visualization.timeMaxMs,
                         focused || filterScanId == node.linkedScanId,
                     )
+                val selectedScan = node.id == highlightedScanNodeId
                 val marker = Marker(map)
                 marker.position = GeoPoint(node.lat!!, node.lon!!)
                 marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
@@ -124,7 +120,8 @@ fun KnowledgeGraphMapLayer(
                     circleDrawable(
                         context,
                         node.color.copy(alpha = alpha).toArgb(),
-                        radiusDp(node.type, node.signalCategory),
+                        radiusDp(node.type, node.signalCategory, selectedScan),
+                        selected = selectedScan,
                     )
                 marker.title = node.label
                 marker.subDescription =
@@ -196,32 +193,55 @@ private fun mapDrawOrder(node: GraphVisNode): Int =
         else -> 3
     }
 
-private fun radiusDp(type: String, signalCategory: String?): Int =
-    when (type) {
-        KnowledgeGraphBuilder.NODE_SCAN -> 22
-        KnowledgeGraphBuilder.NODE_PLACE -> 26
-        KnowledgeGraphBuilder.NODE_SIGNAL ->
-            when (signalCategory?.uppercase()) {
-                "SENSORS" -> 10
-                "NFC" -> 12
-                else -> 14
-            }
-        else -> 16
-    }
+private fun radiusDp(type: String, signalCategory: String?, selected: Boolean = false): Int {
+    val base =
+        when (type) {
+            KnowledgeGraphBuilder.NODE_SCAN -> 22
+            KnowledgeGraphBuilder.NODE_PLACE -> 26
+            KnowledgeGraphBuilder.NODE_SIGNAL ->
+                when (signalCategory?.uppercase()) {
+                    "SENSORS" -> 10
+                    "NFC" -> 12
+                    else -> 14
+                }
+            else -> 16
+        }
+    return if (selected) base + 6 else base
+}
 
-private fun circleDrawable(context: android.content.Context, colorArgb: Int, radiusDp: Int): android.graphics.drawable.BitmapDrawable {
+private fun circleDrawable(
+    context: android.content.Context,
+    colorArgb: Int,
+    radiusDp: Int,
+    selected: Boolean = false,
+): android.graphics.drawable.BitmapDrawable {
     val density = context.resources.displayMetrics.density
     val r = (radiusDp * density / 2f).toInt().coerceAtLeast(8)
-    val size = r * 2 + 4
+    val ringPadding = if (selected) (5f * density).toInt() else 2
+    val size = r * 2 + ringPadding * 2
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = AndroidCanvas(bitmap)
+    val center = size / 2f
+    if (selected) {
+        val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.argb(70, 57, 255, 20)
+            style = Paint.Style.FILL
+        }
+        canvas.drawCircle(center, center, r + 6f * density, halo)
+        val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.argb(255, 57, 255, 20)
+            style = Paint.Style.STROKE
+            strokeWidth = 3f * density
+        }
+        canvas.drawCircle(center, center, r + 4f * density, ring)
+    }
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colorArgb }
-    canvas.drawCircle(size / 2f, size / 2f, r.toFloat(), paint)
+    canvas.drawCircle(center, center, r.toFloat(), paint)
     val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         this.color = android.graphics.Color.argb(200, 255, 255, 255)
         style = Paint.Style.STROKE
-        strokeWidth = 2f * density
+        strokeWidth = if (selected) 2.5f * density else 2f * density
     }
-    canvas.drawCircle(size / 2f, size / 2f, r.toFloat(), stroke)
+    canvas.drawCircle(center, center, r.toFloat(), stroke)
     return android.graphics.drawable.BitmapDrawable(context.resources, bitmap)
 }

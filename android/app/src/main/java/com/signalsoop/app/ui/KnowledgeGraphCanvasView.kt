@@ -63,6 +63,7 @@ fun KnowledgeGraphCanvasView(
     val links = slice.links
     val nodeById = remember(nodes) { nodes.associateBy { it.id } }
     val focused = filterScanId != null
+    val highlightedScanNodeId = filterScanId?.let { KnowledgeGraphBuilder.scanNodeId(it) }
 
     var pan by remember { mutableStateOf(Offset.Zero) }
     var zoom by remember { mutableFloatStateOf(1f) }
@@ -70,11 +71,23 @@ fun KnowledgeGraphCanvasView(
     var selectedLinkKey by remember { mutableStateOf<String?>(null) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 
-    LaunchedEffect(visualization, filterScanId, canvasSize) {
-        selectedId = null
+    LaunchedEffect(visualization, filterScanId, canvasSize, nodes) {
         selectedLinkKey = null
-        pan = Offset.Zero
+        selectedId = highlightedScanNodeId
         zoom = fitZoomForNodes(nodes, canvasSize).coerceIn(0.5f, 2.5f)
+        if (canvasSize.width == 0 || canvasSize.height == 0) {
+            pan = Offset.Zero
+            return@LaunchedEffect
+        }
+        val focusNode =
+            highlightedScanNodeId?.let { scanNodeId -> nodes.find { it.id == scanNodeId } }
+                ?: nodes.singleOrNull()
+        if (focusNode != null && filterScanId != null) {
+            val scale = minOf(canvasSize.width, canvasSize.height) * 0.38f * zoom
+            pan = Offset(-focusNode.layoutX * scale, -focusNode.layoutY * scale)
+        } else {
+            pan = Offset.Zero
+        }
     }
 
     Box(
@@ -177,7 +190,7 @@ fun KnowledgeGraphCanvasView(
             nodes.forEach { node ->
                 val p = toScreen(node)
                 val r = nodeRadius(node.type, node.signalCategory)
-                val selected = node.id == selectedId
+                val selected = node.id == selectedId || node.id == highlightedScanNodeId
                 val alpha =
                     GraphColorPalette.alphaForEpoch(
                         node.epochMs,
