@@ -378,7 +378,6 @@ private fun nodeTypeLabel(node: GraphVisNode?): String =
         KnowledgeGraphBuilder.NODE_SIGNAL ->
             GraphColorPalette.signalLabel(node.signalCategory) + " signal"
         "USER" -> "Your note"
-        "EVRUS" -> "EVRUS"
         "DEVICE" -> "Device"
         else -> node?.type ?: "Node"
     }

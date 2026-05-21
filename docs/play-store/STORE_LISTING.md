@@ -28,7 +28,6 @@ Signal Scoop is a privacy-first Android **defensive sentinel** that surveys **lo
 • **Scan detail** — all BLE, Wi-Fi, and Bluetooth hits from any past scan  
 • **PDF reports** — select scans and save or share  
 • **Ask β** — on-device Q&A over your scan (optional local model)  
-• **Connect** — optional encrypted local mesh (messages, voice, LAN peers)  
 
 **Privacy**
 • **No accounts**  

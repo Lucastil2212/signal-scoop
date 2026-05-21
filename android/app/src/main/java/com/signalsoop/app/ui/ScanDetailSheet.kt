@@ -111,9 +111,6 @@ fun ScanDetailSheet(
                 item { RiskCard(summary = risk) }
             }
             item {
-                MediaActionsRow(scanId = scanId, signalKey = null, viewModel = viewModel)
-            }
-            item {
                 Text(
                     "Filter signals",
                     color = ScoopMuted,

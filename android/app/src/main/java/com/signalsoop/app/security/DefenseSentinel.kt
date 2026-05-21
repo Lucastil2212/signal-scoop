@@ -140,7 +140,6 @@ object DefenseSentinel {
         val playbook =
             buildList {
                 add("Signal Scoop is a defensive sentinel — passive survey only, no exploitation.")
-                add("Use Connect mesh only on trusted Wi-Fi; E2EE text never leaves the LAN.")
                 add("Export and delete History on shared devices; live results clear when you leave the app.")
                 if (unknownBle > 0) add("Rotate or disable Bluetooth when not needed.")
                 if (hiddenWifi > 0) add("Do not trust hidden Wi-Fi for sensitive traffic.")

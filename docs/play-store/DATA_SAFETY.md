@@ -12,8 +12,7 @@ Use when Play Console asks **Data safety**. Version **1.6.2-beta**.
 |-----------|------------|---------|---------|-------|
 | **Location** (approximate / precise) | **Yes, on device** | **No** | App functionality | GPS saved with scans when enabled; not uploaded |
 | **Device or other IDs** (MAC, BSSID) | **Yes, on device** | **No** | App functionality | Shown in UI and local DB only |
-| **Photos / videos** (optional) | **Yes, on device** | **No** | User attaches to scans/signals | App-private files |
-| **Other user-generated content** | **Yes, on device** | **No** | Notes, pet names, mesh messages | Local only |
+| **Other user-generated content** | **Yes, on device** | **No** | Notes, pet names | Local only |
 
 Framing:
 

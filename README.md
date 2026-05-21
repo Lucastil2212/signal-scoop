@@ -19,13 +19,13 @@
 | **NFC** | Whether NFC hardware exists and is enabled |
 | **Session** | Device model, Android version, scan duration, permissions, radio/VPN flags |
 | **Ask** | Natural-language Q&A over the current scan (on-device LLM) |
-| **Knowledge** | Saved scans, local graph map, vault (aliases, media, notes) |
+| **Knowledge** | Saved scans, local graph map, vault (aliases, notes) |
 
 Signal Scoop is a **read-only survey tool**. It does not connect to networks, deauthenticate clients, fingerprint private devices, or bypass Android permissions.
 
 ## How to use the app
 
-Bottom navigation has four tabs. Everything is labeled in the UI — you should not need external docs for day-to-day use.
+Bottom navigation has three tabs. Everything is labeled in the UI — you should not need external docs for day-to-day use.
 
 ### Scan tab (home)
 
@@ -44,13 +44,9 @@ Three sub-tabs:
 |---------|-------------|
 | **Scans** | **Graph insights** → tap to open **full-screen map**. Tap any **scan card** → bottom sheet with **all signals** (filter BLE / Wi-Fi / BT). Checkboxes + **Save PDF** / **Share** for reports (every signal + collection summary per scan). |
 | **Map** | Geo map (Carto dark tiles) or layout fallback when no GPS. **Past scans** strip: tap a chip to filter the map and open that scan’s signals. Tap **nodes** or **lines** for details. **↗** in the top bar = full screen. |
-| **Vault** | Counts and lists for scans, pet names, media, notes, EVRUS links — all on-device. |
+| **Vault** | Counts and lists for scans, pet names, and notes — all on-device. |
 
 Top bar **↗** (when a graph exists) opens full-screen map from any sub-tab.
-
-### Connect tab
-
-Local mesh only (no cloud): **Messages**, **Voice mesh**, **Mesh radio** — see [SECURITY.md](SECURITY.md).
 
 ### Ask tab
 
@@ -70,18 +66,10 @@ Summarize, analyze risk, list BLE/Wi-Fi, etc. work **without** a downloaded mode
 
 - **On-device database** — scans, findings, GPS, risk, graph nodes/edges (Room).
 - **Native map** — OSMDroid + Carto dark basemap when nodes have coordinates; otherwise a **2D canvas** layout.
-- **Color coding** — scan sessions (timeline chips), BLE (cyan), Wi-Fi (amber), Bluetooth (pink), NFC (gold), sensors (purple), places (blue); link types (observed, at place, repeat, notes, EVRUS, devices). Floating **map key** on the graph view.
-- **Scan detail sheet** — full signal list per saved scan, with filters and optional photo/video on the scan.
+- **Color coding** — scan sessions (timeline chips), BLE (cyan), Wi-Fi (amber), Bluetooth (pink), NFC (gold), sensors (purple), places (blue); link types (observed, at place, repeat, notes, devices). Floating **map key** on the graph view.
+- **Scan detail sheet** — full signal list per saved scan, with category filters.
 - **Graph detail sheet** — tap signals, places, or **relationship lines** for context; scan nodes open the scan sheet.
 - **Copy** icons on findings, risk, insights, and scan rows.
-
-**EVRUS / EVRMORE** — local identity and P2P refs; optional EVRUS companion app; **Anchor graph** stays on-device.
-
-### Connect (local mesh)
-
-- **Messages** — X3DH + Double Ratchet (ChaCha20-Poly1305); export inbox as `.txt`
-- **Voice mesh** — PCM over local mesh
-- **Mesh radio** — LAN peers, encrypted session (port 28777, private IPs only)
 
 Published by **Manticore Technologies, LLC**.
 
@@ -151,7 +139,7 @@ signal-scoop/
 ├── release/                 # Shipped APK / AAB artifacts
 ├── LICENSE                  # MIT (Manticore Technologies, LLC)
 ├── NOTICE.md                # Copyright and attribution
-├── SECURITY.md              # Permissions, mesh, storage
+├── SECURITY.md              # Permissions and storage
 ├── seed.md                  # Original MVP notes
 └── .beads/                  # Task tracking (Beads)
 ```

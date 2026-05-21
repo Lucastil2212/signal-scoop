@@ -21,8 +21,6 @@ object ScanPolicy {
         "GPS fixes use the phone’s native location stack — never sent off-device.",
         "We do not connect to, pair with, or attack nearby devices.",
         "Release builds block screenshots and recents preview; debug builds allow screenshots for development.",
-        "Connect mesh: LAN-only peers, E2EE text, rate/size limits; radio stops when the app backgrounds.",
-        "Mesh device ID stored in encrypted prefs; graph WebView cannot load external URLs.",
     )
 
     val permissionBullets = listOf(

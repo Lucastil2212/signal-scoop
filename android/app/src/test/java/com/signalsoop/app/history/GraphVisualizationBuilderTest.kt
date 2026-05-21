@@ -59,7 +59,6 @@ class GraphVisualizationBuilderTest {
                 aliases = emptyList(),
                 userNodes = emptyList(),
                 deviceLinks = emptyList(),
-                evrusLinks = emptyList(),
                 scanGpsById = mapOf(scanId to Pair(37.77, -122.42)),
                 scanEpochById = mapOf(scanId to 1_700_000_000_000L),
                 scanLabelsById = mapOf(scanId to "Test scan"),
@@ -109,7 +108,6 @@ class GraphVisualizationBuilderTest {
                 aliases = emptyList(),
                 userNodes = emptyList(),
                 deviceLinks = emptyList(),
-                evrusLinks = emptyList(),
                 scanGpsById = emptyMap(),
             )
 

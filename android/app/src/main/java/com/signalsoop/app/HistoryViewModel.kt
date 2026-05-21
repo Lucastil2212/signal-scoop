@@ -3,8 +3,6 @@ package com.signalsoop.app
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.signalsoop.app.evr.EvrusConnector
-import com.signalsoop.app.evr.LocalEvrusConnector
 import com.signalsoop.app.history.GraphColorPalette
 import com.signalsoop.app.history.GraphLinkSelection
 import com.signalsoop.app.history.GraphVisualization
@@ -30,7 +28,6 @@ data class HistoryUiState(
     val snapshots: List<ScanSnapshot> = emptyList(),
     val insights: KnowledgeGraphInsights? = null,
     val vault: ScanHistoryRepository.VaultSnapshot? = null,
-    val graphJson: String = "",
     val graphVisualization: GraphVisualization? = null,
     val graphEdges: List<GraphEdgeEntity> = emptyList(),
     val selectedScanId: String? = null,
@@ -49,7 +46,6 @@ data class HistoryUiState(
     val addNoteLabel: String = "",
     val addNoteBody: String = "",
     val statusMessage: String = "Your knowledge graph stays on this device.",
-    val evrusCompanionAvailable: Boolean = false,
     val reportSelectedIds: Set<String> = emptySet(),
     val reportGenerating: Boolean = false,
 )
@@ -57,7 +53,6 @@ data class HistoryUiState(
 class HistoryViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as SignalScoopApp
     private val repository = app.scanHistoryRepository
-    val evrusConnector: EvrusConnector = app.evrusConnector
 
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -81,10 +76,6 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                 _uiState.update { it.copy(vault = vault) }
             }
         }
-        viewModelScope.launch {
-            val available = evrusConnector.isCompanionAvailable()
-            _uiState.update { it.copy(evrusCompanionAvailable = available) }
-        }
     }
 
     fun refreshGraphAndInsights() {
@@ -92,13 +83,11 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             runCatching {
                 repository.rebuildKnowledgeGraphFromHistory()
                 val insights = repository.buildInsights()
-                val json = repository.buildGraphJson()
                 val visualization = repository.buildVisualization()
                 val edges = repository.graphEdges()
                 _uiState.update {
                     it.copy(
                         insights = insights,
-                        graphJson = json,
                         graphVisualization = visualization,
                         graphEdges = edges,
                         statusMessage = "Your knowledge graph stays on this device.",
@@ -352,65 +341,11 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun attachMedia(filePath: String, mediaType: String, scanId: String?, signalKey: String?) {
-        viewModelScope.launch {
-            repository.attachMedia(
-                filePath = filePath,
-                mediaType = mediaType,
-                scanId = scanId,
-                signalKey = signalKey,
-            )
-            _uiState.update { it.copy(statusMessage = "Media attached to your graph.") }
-            refreshGraphAndInsights()
-        }
-    }
-
-    fun deleteMedia(id: String) {
-        viewModelScope.launch {
-            repository.deleteMedia(id)
-            refreshGraphAndInsights()
-        }
-    }
-
     fun linkDevice(signalKey: String, address: String, label: String) {
         viewModelScope.launch {
             repository.linkDevice(signalKey, address, label, isPaired = false)
             _uiState.update { it.copy(statusMessage = "Device linked in graph (local metadata).") }
             refreshGraphAndInsights()
-        }
-    }
-
-    fun linkEvrus(signalKey: String, petName: String?, scanId: String?) {
-        viewModelScope.launch {
-            evrusConnector.linkSignal(signalKey, petName, scanId)
-                .onSuccess { result ->
-                    _uiState.update {
-                        it.copy(
-                            statusMessage =
-                                "EVRUS linked · ${result.did.take(28)}… · P2P ${result.p2pPeerId?.take(16) ?: "local"}",
-                        )
-                    }
-                }
-                .onFailure { err ->
-                    _uiState.update {
-                        it.copy(statusMessage = err.message ?: "EVRUS link failed")
-                    }
-                }
-            refreshGraphAndInsights()
-        }
-    }
-
-    fun anchorGraphToEvrmore() {
-        viewModelScope.launch {
-            val digest =
-                (app as SignalScoopApp).let { connector ->
-                    (connector.evrusConnector as? LocalEvrusConnector)?.digestOf(_uiState.value.graphJson)
-                        ?: _uiState.value.graphJson.hashCode().toString()
-                }
-            evrusConnector.publishGraphDigest(digest)
-                .onSuccess { ref ->
-                    _uiState.update { it.copy(statusMessage = "Graph anchored locally · $ref") }
-                }
         }
     }
 

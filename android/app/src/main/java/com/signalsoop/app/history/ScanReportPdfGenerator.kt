@@ -98,7 +98,6 @@ object ScanReportPdfGenerator {
             "At place" -> 0xFF00AEEF.toInt()
             "Repeat" -> 0xFFFFB020.toInt()
             "Note" -> 0xFFE040FB.toInt()
-            "EVRUS" -> 0xFF7B61FF.toInt()
             "Device" -> 0xFFFF4D6D.toInt()
             else -> 0xFF8BA4C4.toInt()
         }

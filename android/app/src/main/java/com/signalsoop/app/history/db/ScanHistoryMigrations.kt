@@ -134,6 +134,23 @@ object ScanHistoryMigrations {
             }
         }
 
+    val MIGRATION_4_5 =
+        object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS graph_media")
+                db.execSQL("DROP TABLE IF EXISTS evrus_identity_links")
+            }
+        }
+
+    val MIGRATION_5_6 =
+        object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS mesh_messages")
+                db.execSQL("DROP TABLE IF EXISTS mesh_sessions")
+                db.execSQL("DROP TABLE IF EXISTS mesh_peers")
+            }
+        }
+
     private fun columnExists(
         db: SupportSQLiteDatabase,
         table: String,

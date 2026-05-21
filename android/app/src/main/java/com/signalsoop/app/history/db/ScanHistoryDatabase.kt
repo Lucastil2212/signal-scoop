@@ -12,21 +12,14 @@ import androidx.room.RoomDatabase
         GraphNodeEntity::class,
         GraphEdgeEntity::class,
         SignalAliasEntity::class,
-        GraphMediaEntity::class,
         UserGraphNodeEntity::class,
         DeviceLinkEntity::class,
-        EvrusIdentityLinkEntity::class,
-        com.signalsoop.app.mesh.db.MeshMessageEntity::class,
-        com.signalsoop.app.mesh.db.MeshSessionEntity::class,
-        com.signalsoop.app.mesh.db.MeshPeerEntity::class,
     ],
-    version = 4,
+    version = 6,
     exportSchema = false,
 )
 abstract class ScanHistoryDatabase : RoomDatabase() {
     abstract fun scanHistoryDao(): ScanHistoryDao
-
-    abstract fun meshDao(): com.signalsoop.app.mesh.db.MeshDao
 
     companion object {
         private const val DB_NAME = "signal_scoop_scan_history.db"
@@ -47,6 +40,8 @@ abstract class ScanHistoryDatabase : RoomDatabase() {
                     ScanHistoryMigrations.MIGRATION_1_2,
                     ScanHistoryMigrations.MIGRATION_2_3,
                     ScanHistoryMigrations.MIGRATION_3_4,
+                    ScanHistoryMigrations.MIGRATION_4_5,
+                    ScanHistoryMigrations.MIGRATION_5_6,
                 )
                 .build()
 

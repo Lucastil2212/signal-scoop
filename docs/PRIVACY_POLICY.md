@@ -26,8 +26,7 @@ When you tap **Scan nearby signals**, the app may access:
 
 - **Saved scans** — findings, risk summary, timestamp, optional GPS, user-defined name.
 - **Knowledge graph** — nodes and links derived from your scans (places, signals, sessions).
-- **Vault** — optional pet names for signals, photos/videos you attach, notes, local EVRUS links.
-- **Connect mesh** — encrypted session material and device ID in app-private storage.
+- **Vault** — optional pet names for signals and notes you add to the graph.
 
 You can **delete scans** in the app. Uninstalling removes all app data.
 

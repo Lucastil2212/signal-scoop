@@ -62,18 +62,6 @@ interface ScanHistoryDao {
     @Query("DELETE FROM signal_aliases WHERE signalKey = :signalKey")
     suspend fun deleteAlias(signalKey: String)
 
-    @Query("SELECT * FROM graph_media ORDER BY capturedAtEpochMs DESC")
-    fun observeMedia(): Flow<List<GraphMediaEntity>>
-
-    @Query("SELECT * FROM graph_media ORDER BY capturedAtEpochMs DESC")
-    suspend fun getAllMedia(): List<GraphMediaEntity>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertMedia(entity: GraphMediaEntity)
-
-    @Query("DELETE FROM graph_media WHERE id = :id")
-    suspend fun deleteMedia(id: String)
-
     @Query("SELECT * FROM user_graph_nodes ORDER BY createdAtEpochMs DESC")
     fun observeUserNodes(): Flow<List<UserGraphNodeEntity>>
 
@@ -94,21 +82,6 @@ interface ScanHistoryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertDeviceLink(entity: DeviceLinkEntity)
-
-    @Query("SELECT * FROM evrus_identity_links ORDER BY linkedAtEpochMs DESC")
-    fun observeEvrusLinks(): Flow<List<EvrusIdentityLinkEntity>>
-
-    @Query("SELECT * FROM evrus_identity_links ORDER BY linkedAtEpochMs DESC")
-    suspend fun getAllEvrusLinks(): List<EvrusIdentityLinkEntity>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertEvrusLink(entity: EvrusIdentityLinkEntity)
-
-    @Query("DELETE FROM graph_media WHERE scanId = :scanId")
-    suspend fun deleteMediaForScan(scanId: String)
-
-    @Query("DELETE FROM evrus_identity_links WHERE scanId = :scanId")
-    suspend fun deleteEvrusForScan(scanId: String)
 
     @Query("DELETE FROM user_graph_nodes WHERE linkedScanId = :scanId")
     suspend fun deleteUserNodesForScan(scanId: String)

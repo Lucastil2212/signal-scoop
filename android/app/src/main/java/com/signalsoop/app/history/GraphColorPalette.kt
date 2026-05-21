@@ -6,13 +6,11 @@ import com.signalsoop.app.model.SignalCategory
 object GraphColorPalette {
     val place = Color(0xFF00AEEF)
     val user = Color(0xFFE040FB)
-    val evrus = Color(0xFF7B61FF)
     val device = Color(0xFFFF4D6D)
     val linkObserved = Color(0xFF8BA4C4)
     val linkPlace = Color(0xFF00AEEF)
     val linkRepeat = Color(0xFFFFB020)
     val linkUser = Color(0xFFE040FB)
-    val linkEvrus = Color(0xFF7B61FF)
     val linkDevice = Color(0xFFFF4D6D)
 
     val ble = Color(0xFF7AE7FF)
@@ -89,7 +87,6 @@ object GraphColorPalette {
             KnowledgeGraphBuilder.NODE_PLACE -> place
             KnowledgeGraphBuilder.NODE_SIGNAL -> ble
             "USER" -> user
-            "EVRUS" -> evrus
             "DEVICE" -> device
             else -> system
         }
@@ -100,7 +97,6 @@ object GraphColorPalette {
             KnowledgeGraphBuilder.REL_OBSERVED -> linkObserved
             KnowledgeGraphBuilder.REL_REPEAT -> linkRepeat
             "USER_NOTE" -> linkUser
-            "EVRUS_ID" -> linkEvrus
             "DEVICE_LINK" -> linkDevice
             else -> linkObserved
         }
@@ -111,7 +107,6 @@ object GraphColorPalette {
             KnowledgeGraphBuilder.REL_OBSERVED -> "Observed in scan"
             KnowledgeGraphBuilder.REL_REPEAT -> "Seen again"
             "USER_NOTE" -> "Your note"
-            "EVRUS_ID" -> "EVRUS link"
             "DEVICE_LINK" -> "Device link"
             else -> relation
         }
@@ -125,7 +120,6 @@ object GraphColorPalette {
             KnowledgeGraphBuilder.REL_REPEAT ->
                 "This signal appeared in more than one scan (recurring)."
             "USER_NOTE" -> "A note you added to the graph."
-            "EVRUS_ID" -> "Local EVRUS identity anchor for this node."
             "DEVICE_LINK" -> "A device you linked to this signal locally."
             else -> "Relationship in your local knowledge graph."
         }
@@ -146,7 +140,6 @@ object GraphColorPalette {
             LegendEntry(linkPlace, "At place"),
             LegendEntry(linkRepeat, "Repeat"),
             LegendEntry(linkUser, "Note"),
-            LegendEntry(linkEvrus, "EVRUS"),
             LegendEntry(linkDevice, "Device"),
         )
 

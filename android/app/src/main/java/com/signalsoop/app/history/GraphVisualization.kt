@@ -2,7 +2,6 @@ package com.signalsoop.app.history
 
 import androidx.compose.ui.graphics.Color
 import com.signalsoop.app.history.db.DeviceLinkEntity
-import com.signalsoop.app.history.db.EvrusIdentityLinkEntity
 import com.signalsoop.app.history.db.GraphEdgeEntity
 import com.signalsoop.app.history.db.GraphNodeEntity
 import com.signalsoop.app.history.db.SignalAliasEntity
@@ -54,7 +53,6 @@ object GraphVisualizationBuilder {
         aliases: List<SignalAliasEntity>,
         userNodes: List<UserGraphNodeEntity>,
         deviceLinks: List<DeviceLinkEntity>,
-        evrusLinks: List<EvrusIdentityLinkEntity>,
         scanGpsById: Map<String, Pair<Double, Double>>,
         scanEpochById: Map<String, Long> = emptyMap(),
         scanLabelsById: Map<String, String> = emptyMap(),
@@ -190,27 +188,6 @@ object GraphVisualizationBuilder {
                 )
         }
 
-        evrusLinks.forEachIndexed { index, link ->
-            val id = "evrus:${link.id}"
-            val coord =
-                link.scanId?.let { scanId ->
-                    coordsByNodeId[KnowledgeGraphBuilder.scanNodeId(scanId)]
-                } ?: link.signalKey?.let { key -> coordsByNodeId["signal:$key"] }
-            val offset = offsetDegrees(index + 40, 0.00022)
-            visNodes +=
-                GraphVisNode(
-                    id = id,
-                    label = link.displayName ?: link.evrusDid.take(24),
-                    rawLabel = link.evrusDid,
-                    type = "EVRUS",
-                    color = GraphColorPalette.evrus,
-                    layoutX = 0f,
-                    layoutY = 0f,
-                    lat = coord?.first?.plus(offset.first),
-                    lon = coord?.second?.plus(offset.second),
-                )
-        }
-
         deviceLinks.forEachIndexed { index, link ->
             val deviceId = "device:${link.id}"
             val coord = coordsByNodeId["signal:${link.signalKey}"]
@@ -256,25 +233,6 @@ object GraphVisualizationBuilder {
                         sourceId = "signal:$key",
                         targetId = "user:${user.id}",
                         relation = "USER_NOTE",
-                    )
-            }
-        }
-
-        evrusLinks.forEach { link ->
-            link.scanId?.let { scanId ->
-                visLinks +=
-                    GraphVisLink(
-                        sourceId = KnowledgeGraphBuilder.scanNodeId(scanId),
-                        targetId = "evrus:${link.id}",
-                        relation = "EVRUS_ID",
-                    )
-            }
-            link.signalKey?.let { key ->
-                visLinks +=
-                    GraphVisLink(
-                        sourceId = "signal:$key",
-                        targetId = "evrus:${link.id}",
-                        relation = "EVRUS_ID",
                     )
             }
         }

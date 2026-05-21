@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Chat
-import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Radar
 import androidx.compose.material3.Icon
@@ -21,7 +20,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.signalsoop.app.HistoryViewModel
-import com.signalsoop.app.MeshViewModel
 import com.signalsoop.app.ScanViewModel
 import com.signalsoop.app.assistant.AssistantViewModel
 import com.signalsoop.app.ui.theme.ScoopBlack
@@ -31,7 +29,6 @@ import com.signalsoop.app.ui.theme.ScoopMuted
 private enum class MainTab(val label: String) {
     Scan("Scan"),
     Graph("Graph"),
-    Connect("Connect"),
     Ask("Ask"),
 }
 
@@ -44,7 +41,6 @@ fun MainShell(
     val scanState by scanViewModel.uiState.collectAsState()
     val assistantViewModel: AssistantViewModel = viewModel()
     val historyViewModel: HistoryViewModel = viewModel()
-    val meshViewModel: MeshViewModel = viewModel()
     val historyState by historyViewModel.uiState.collectAsState()
     var tab by remember { mutableStateOf(MainTab.Scan) }
     var graphFullscreen by remember { mutableStateOf(false) }
@@ -96,7 +92,6 @@ fun MainShell(
                                 when (dest) {
                                     MainTab.Scan -> Icons.Rounded.Radar
                                     MainTab.Graph -> Icons.Rounded.Hub
-                                    MainTab.Connect -> Icons.Rounded.Hub
                                     MainTab.Ask -> Icons.Rounded.Chat
                                 },
                                 contentDescription = dest.label,
@@ -127,11 +122,6 @@ fun MainShell(
                 KnowledgeHubScreen(
                     viewModel = historyViewModel,
                     onOpenGraphFullscreen = { graphFullscreen = true },
-                    modifier = Modifier.padding(padding),
-                )
-            MainTab.Connect ->
-                ConnectHomeScreen(
-                    meshViewModel = meshViewModel,
                     modifier = Modifier.padding(padding),
                 )
             MainTab.Ask ->

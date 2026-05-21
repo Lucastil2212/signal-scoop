@@ -295,7 +295,7 @@ private fun nodeRadius(type: String, signalCategory: String?): Float =
                 "NFC" -> 7f
                 else -> 8f
             }
-        "EVRUS", "USER" -> 10f
+        "USER" -> 10f
         "DEVICE" -> 9f
         else -> 9f
     }

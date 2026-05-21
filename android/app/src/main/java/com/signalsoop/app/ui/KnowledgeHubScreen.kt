@@ -1,6 +1,5 @@
 package com.signalsoop.app.ui
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -19,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Hub
@@ -29,7 +27,6 @@ import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -63,7 +60,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.signalsoop.app.HistoryViewModel
-import com.signalsoop.app.history.GraphMediaStorage
 import com.signalsoop.app.history.KnowledgeGraphBuilder
 import com.signalsoop.app.history.KnowledgeGraphInsights
 import com.signalsoop.app.history.ScanSnapshot
@@ -229,17 +225,6 @@ fun KnowledgeHubScreen(
                                 emptyMessage =
                                     "Save a scan on the Scan tab, then open Map here.",
                             )
-                            Surface(color = ScoopSurfaceHigh, modifier = Modifier.fillMaxWidth()) {
-                                FilledTonalButton(
-                                    onClick = { viewModel.anchorGraphToEvrmore() },
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                                ) {
-                                    Text("Anchor graph to EVRUS (on-device)")
-                                }
-                            }
                         }
                     }
                     HubTab.Vault ->
@@ -433,40 +418,10 @@ private fun VaultTab(
         }
         item {
             VaultStatCard(
-                title = "Media",
-                value = "${vault?.media?.size ?: 0}",
-                subtitle = "Photos and videos",
+                title = "Notes",
+                value = "${vault?.userNotes?.size ?: 0}",
+                subtitle = "Annotations on your graph",
             )
-        }
-        item {
-            VaultStatCard(
-                title = "EVRUS links",
-                value = "${vault?.evrusLinks?.size ?: 0}",
-                subtitle =
-                    if (uiState.evrusCompanionAvailable) "Companion app detected" else "Local identity until EVRUS app installs",
-            )
-        }
-        vault?.media?.forEach { media ->
-            item(key = "media-${media.id}") {
-                Surface(shape = RoundedCornerShape(12.dp), color = ScoopSurfaceHigh) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(media.mediaType, color = ScoopGreen, style = MaterialTheme.typography.labelMedium)
-                            Text(media.filePath.substringAfterLast('/'), color = ScoopWhite, style = MaterialTheme.typography.bodySmall)
-                        }
-                        IconButton(onClick = { viewModel.deleteMedia(media.id) }) {
-                            Icon(Icons.Rounded.Delete, contentDescription = "Delete", tint = ScoopMuted)
-                        }
-                    }
-                }
-            }
         }
         vault?.userNotes?.forEach { note ->
             item(key = "note-${note.id}") {
@@ -479,92 +434,6 @@ private fun VaultTab(
             }
         }
         item { ManticoreFooter() }
-    }
-}
-
-@Composable
-internal fun MediaActionsRow(
-    scanId: String?,
-    signalKey: String?,
-    viewModel: HistoryViewModel,
-) {
-    val context = LocalContext.current
-    var captureGeneration by remember { mutableIntStateOf(0) }
-    val photoFile = remember(captureGeneration) { GraphMediaStorage.newPhotoFile(context) }
-    val videoFile = remember(captureGeneration) { GraphMediaStorage.newVideoFile(context) }
-    val photoUri =
-        remember(photoFile) {
-            FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                photoFile,
-            )
-        }
-    val videoUri =
-        remember(videoFile) {
-            FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                videoFile,
-            )
-        }
-    val takePhoto =
-        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-            if (ok) viewModel.attachMedia(photoFile.absolutePath, "PHOTO", scanId, signalKey)
-        }
-    val takeVideo =
-        rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { ok ->
-            if (ok) viewModel.attachMedia(videoFile.absolutePath, "VIDEO", scanId, signalKey)
-        }
-
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        FilledTonalButton(
-            onClick = {
-                captureGeneration++
-                takePhoto.launch(photoUri)
-            },
-            modifier = Modifier.weight(1f),
-        ) {
-            Icon(Icons.Rounded.CameraAlt, contentDescription = null, modifier = Modifier.height(18.dp))
-            Text(" Photo", style = MaterialTheme.typography.labelMedium)
-        }
-        FilledTonalButton(
-            onClick = {
-                captureGeneration++
-                takeVideo.launch(videoUri)
-            },
-            modifier = Modifier.weight(1f),
-        ) {
-            Icon(Icons.Rounded.Videocam, contentDescription = null, modifier = Modifier.height(18.dp))
-            Text(" Video", style = MaterialTheme.typography.labelMedium)
-        }
-    }
-}
-
-@Composable
-private fun SignalFindingRow(
-    finding: Finding,
-    petName: String?,
-    onPetName: () -> Unit,
-    onLinkDevice: () -> Unit,
-    onEvrus: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        FindingCard(finding = finding)
-        if (petName != null) {
-            Text("Pet name: $petName", color = ScoopGreen, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 4.dp))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
-            TextButton(onClick = onPetName) { Text("Name") }
-            TextButton(onClick = onLinkDevice) { Text("Link device") }
-            TextButton(onClick = onEvrus) { Text("EVRUS") }
-        }
     }
 }
 

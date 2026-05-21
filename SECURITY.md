@@ -29,22 +29,14 @@ Signal Scoop is a **local, read-only radio survey** and **defensive hacking sent
 |-----|-----------|
 | Optional **Ask** model download | HTTPS to URL you trigger; `.task` checkpoint only |
 | **Knowledge map** basemap tiles | HTTPS tile requests to Carto CDN (map display only; no scan content) |
-| **Connect mesh** | Local LAN / BLE only; no internet relay |
 
 Release builds block cleartext except as configured in `networkSecurityConfig`.
 
-## Connect mesh (optional, local only)
-
-- **LAN-only:** TCP mesh accepts private RFC1918 / link-local peers; limits on frame size and rate.
-- **Crypto:** X3DH + Double Ratchet (ChaCha20-Poly1305).
-- **Lifecycle:** Mesh stops when the app leaves the foreground.
-- **No cloud inbox.**
-
 ## Storage
 
-- **Mesh device ID:** `EncryptedSharedPreferences` (AES-256-GCM).
 - **History / graph:** App-private Room (`signal_scoop_scan_history.db`); not SQLCipher — protect device with a lock screen.
-- **Knowledge graph UI:** Native **OSMDroid** map or **Compose Canvas** layout — no WebView graph viewer; graph JSON is built in-process.
+- **Ask model path:** Encrypted prefs for optional LiteRT checkpoint location.
+- **Knowledge graph UI:** Native **OSMDroid** map or **Compose Canvas** layout — no WebView graph viewer.
 
 ## Permissions
 

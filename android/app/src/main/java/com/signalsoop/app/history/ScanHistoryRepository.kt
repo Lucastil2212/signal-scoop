@@ -1,7 +1,6 @@
 package com.signalsoop.app.history
 
 import com.signalsoop.app.history.db.GraphEdgeEntity
-import com.signalsoop.app.history.db.GraphMediaEntity
 import com.signalsoop.app.history.db.GraphNodeEntity
 import com.signalsoop.app.history.db.SavedScanEntity
 import com.signalsoop.app.history.db.ScanHistoryDao
@@ -67,9 +66,6 @@ class ScanHistoryRepository(
     }
 
     suspend fun deleteScan(id: String) {
-        dao.getAllMedia().filter { it.scanId == id }.forEach { GraphMediaStorage.deleteFile(it.filePath) }
-        dao.deleteMediaForScan(id)
-        dao.deleteEvrusForScan(id)
         dao.deleteUserNodesForScan(id)
         dao.deleteEdgesForScan(id)
         dao.deleteScan(id)
@@ -123,34 +119,6 @@ class ScanHistoryRepository(
         dao.deleteUserNode(id)
     }
 
-    suspend fun attachMedia(
-        filePath: String,
-        mediaType: String,
-        scanId: String? = null,
-        nodeId: String? = null,
-        signalKey: String? = null,
-        caption: String? = null,
-    ): GraphMediaEntity {
-        val entity =
-            GraphMediaEntity(
-                id = UUID.randomUUID().toString(),
-                scanId = scanId,
-                nodeId = nodeId,
-                signalKey = signalKey,
-                mediaType = mediaType,
-                filePath = filePath,
-                caption = caption,
-                capturedAtEpochMs = System.currentTimeMillis(),
-            )
-        dao.upsertMedia(entity)
-        return entity
-    }
-
-    suspend fun deleteMedia(id: String) {
-        dao.getAllMedia().find { it.id == id }?.let { GraphMediaStorage.deleteFile(it.filePath) }
-        dao.deleteMedia(id)
-    }
-
     suspend fun linkDevice(signalKey: String, deviceAddress: String, label: String, isPaired: Boolean) {
         dao.upsertDeviceLink(
             com.signalsoop.app.history.db.DeviceLinkEntity(
@@ -170,19 +138,6 @@ class ScanHistoryRepository(
             val lon = scan.longitude ?: return@mapNotNull null
             scan.id to Pair(lat, lon)
         }.toMap()
-
-    suspend fun buildGraphJson(): String {
-        ensureGraphMaterialized()
-        return GraphJsonExporter.toJson(
-            nodes = dao.getAllNodes(),
-            edges = dao.getAllEdges(),
-            aliases = dao.getAllAliases(),
-            userNodes = dao.getAllUserNodes(),
-            deviceLinks = dao.getAllDeviceLinks(),
-            evrusLinks = dao.getAllEvrusLinks(),
-            scanGpsById = scanGpsById(),
-        )
-    }
 
     suspend fun ensureGraphMaterialized() {
         if (dao.getAllNodes().isNotEmpty()) return
@@ -208,7 +163,6 @@ class ScanHistoryRepository(
             aliases = dao.getAllAliases(),
             userNodes = dao.getAllUserNodes(),
             deviceLinks = dao.getAllDeviceLinks(),
-            evrusLinks = dao.getAllEvrusLinks(),
             scanGpsById = scanGpsById(),
             scanEpochById = scans.associate { it.id to it.scannedAtEpochMs },
             scanLabelsById = scans.associate { it.id to it.name },
@@ -220,33 +174,23 @@ class ScanHistoryRepository(
     data class VaultSnapshot(
         val scans: List<ScanSnapshot>,
         val aliases: List<SignalAliasEntity>,
-        val media: List<GraphMediaEntity>,
         val userNotes: List<UserGraphNodeEntity>,
         val deviceLinks: List<com.signalsoop.app.history.db.DeviceLinkEntity>,
-        val evrusLinks: List<com.signalsoop.app.history.db.EvrusIdentityLinkEntity>,
     )
 
     val vault: Flow<VaultSnapshot> =
         combine(
-            combine(
-                snapshots,
-                dao.observeAliases(),
-                dao.observeMedia(),
-                dao.observeUserNodes(),
-                dao.observeDeviceLinks(),
-            ) { scanList, aliasList, mediaList, userList, deviceList ->
-                VaultSnapshot(
-                    scans = scanList,
-                    aliases = aliasList,
-                    media = mediaList,
-                    userNotes = userList,
-                    deviceLinks = deviceList,
-                    evrusLinks = emptyList(),
-                )
-            },
-            dao.observeEvrusLinks(),
-        ) { partial, evrusList ->
-            partial.copy(evrusLinks = evrusList)
+            snapshots,
+            dao.observeAliases(),
+            dao.observeUserNodes(),
+            dao.observeDeviceLinks(),
+        ) { scanList, aliasList, userList, deviceList ->
+            VaultSnapshot(
+                scans = scanList,
+                aliases = aliasList,
+                userNotes = userList,
+                deviceLinks = deviceList,
+            )
         }
 
     suspend fun getScan(id: String): ScanSnapshot? =

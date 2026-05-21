@@ -16,8 +16,6 @@
 
 # Room (scan history — on-device only)
 -keep class com.signalsoop.app.history.db.** { *; }
--keep class com.signalsoop.app.evr.** { *; }
--keep class com.signalsoop.app.mesh.** { *; }
 
 # OSMDroid map tiles (graph hub)
 -dontwarn org.osmdroid.**
