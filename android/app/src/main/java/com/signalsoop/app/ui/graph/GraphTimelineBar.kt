@@ -41,7 +41,6 @@ fun GraphTimelineBar(
     filterScanId: String?,
     filterLabel: String,
     onSelectScan: (String?) -> Unit,
-    onOpenScanDetail: (scanId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (scans.isEmpty()) return
@@ -62,7 +61,7 @@ fun GraphTimelineBar(
             ) {
                 Column {
                     Text("Past scans", color = ScoopWhite, style = MaterialTheme.typography.labelLarge)
-                    Text("Tap to view signals · filters map", color = ScoopMuted, style = MaterialTheme.typography.labelSmall)
+                    Text("Tap to zoom map to scan", color = ScoopMuted, style = MaterialTheme.typography.labelSmall)
                 }
                 Text(filterLabel, color = ScoopMuted, style = MaterialTheme.typography.labelSmall)
             }
@@ -91,10 +90,7 @@ fun GraphTimelineBar(
                         modifier =
                             Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    onSelectScan(scan.scanId)
-                                    onOpenScanDetail(scan.scanId)
-                                }
+                                .clickable { onSelectScan(scan.scanId) }
                                 .border(
                                     width = if (selected) 2.dp else 1.dp,
                                     color = if (selected) ScoopGreen else ScoopMuted.copy(alpha = 0.35f),

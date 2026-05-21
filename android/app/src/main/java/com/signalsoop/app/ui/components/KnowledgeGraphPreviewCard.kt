@@ -44,7 +44,6 @@ fun KnowledgeGraphPreviewCard(
     onOpenGraphTab: () -> Unit,
     onNodeSelected: (nodeId: String, nodeType: String, label: String) -> Unit,
     onLinkSelected: (sourceId: String, targetId: String, relation: String) -> Unit,
-    onOpenScanDetail: (scanId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hasGraph = visualization?.nodes?.isNotEmpty() == true
@@ -100,7 +99,6 @@ fun KnowledgeGraphPreviewCard(
                 onFilterScanChange = onFilterScanChange,
                 onNodeSelected = onNodeSelected,
                 onLinkSelected = onLinkSelected,
-                onOpenScanDetail = onOpenScanDetail,
                 showChrome = false,
                 showTimeline = false,
                 modifier =

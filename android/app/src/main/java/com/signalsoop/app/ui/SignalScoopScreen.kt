@@ -86,7 +86,7 @@ fun SignalScoopScreen(
 
     LaunchedEffect(uiState.findings.size, uiState.isScanning) {
         if (!uiState.isScanning && uiState.findings.isNotEmpty()) {
-            listState.animateScrollToItem(3)
+            listState.animateScrollToItem(4)
         }
     }
 
@@ -117,6 +117,25 @@ fun SignalScoopScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item {
+                HeroHeader()
+            }
+
+            item {
+                KnowledgeGraphPreviewCard(
+                    visualization = historyState.graphVisualization,
+                    filterScanId = historyState.graphFilterScanId,
+                    onFilterScanChange = historyViewModel::setGraphTimelineFilter,
+                    scanCount = insights?.totalScans ?: historyState.snapshots.size,
+                    placeCount = insights?.uniquePlaces ?: 0,
+                    signalCount = insights?.recurringSignals?.size ?: 0,
+                    onOpenFullscreen = onOpenGraphFullscreen,
+                    onOpenGraphTab = onOpenGraphTab,
+                    onNodeSelected = historyViewModel::onGraphNodeSelected,
+                    onLinkSelected = historyViewModel::onGraphLinkSelected,
+                )
+            }
+
             item {
                 ScanActionButton(
                     uiState = uiState,
@@ -187,26 +206,6 @@ fun SignalScoopScreen(
 
             uiState.sentinelReport?.let { report ->
                 item { SentinelDefenseCard(report = report) }
-            }
-
-            item {
-                KnowledgeGraphPreviewCard(
-                    visualization = historyState.graphVisualization,
-                    filterScanId = historyState.graphFilterScanId,
-                    onFilterScanChange = historyViewModel::setGraphTimelineFilter,
-                    scanCount = insights?.totalScans ?: historyState.snapshots.size,
-                    placeCount = insights?.uniquePlaces ?: 0,
-                    signalCount = insights?.recurringSignals?.size ?: 0,
-                    onOpenFullscreen = onOpenGraphFullscreen,
-                    onOpenGraphTab = onOpenGraphTab,
-                    onNodeSelected = historyViewModel::onGraphNodeSelected,
-                    onLinkSelected = historyViewModel::onGraphLinkSelected,
-                    onOpenScanDetail = historyViewModel::openScanDetail,
-                )
-            }
-
-            item {
-                HeroHeader()
             }
 
             item {

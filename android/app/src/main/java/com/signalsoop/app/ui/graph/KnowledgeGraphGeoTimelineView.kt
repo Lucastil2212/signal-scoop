@@ -23,7 +23,6 @@ fun KnowledgeGraphGeoTimelineView(
     onFilterScanChange: (String?) -> Unit,
     onNodeSelected: (nodeId: String, nodeType: String, label: String) -> Unit,
     onLinkSelected: (sourceId: String, targetId: String, relation: String) -> Unit,
-    onOpenScanDetail: (scanId: String) -> Unit,
     modifier: Modifier = Modifier,
     emptyMessage: String = "Save a scan on the Scan tab to build your knowledge graph.",
     showChrome: Boolean = true,
@@ -90,7 +89,6 @@ fun KnowledgeGraphGeoTimelineView(
                 filterScanId = filterScanId,
                 filterLabel = slice.label,
                 onSelectScan = onFilterScanChange,
-                onOpenScanDetail = onOpenScanDetail,
             )
         }
         footer?.invoke()

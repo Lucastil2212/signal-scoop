@@ -220,7 +220,6 @@ fun KnowledgeHubScreen(
                                 onFilterScanChange = viewModel::setGraphTimelineFilter,
                                 onNodeSelected = viewModel::onGraphNodeSelected,
                                 onLinkSelected = viewModel::onGraphLinkSelected,
-                                onOpenScanDetail = viewModel::openScanDetail,
                                 modifier = Modifier.weight(1f).fillMaxWidth(),
                                 emptyMessage =
                                     "Save a scan on the Scan tab, then open Map here.",

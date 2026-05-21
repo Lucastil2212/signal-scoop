@@ -95,7 +95,6 @@ fun GraphFullscreenScreen(
             onFilterScanChange = viewModel::setGraphTimelineFilter,
             onNodeSelected = viewModel::onGraphNodeSelected,
             onLinkSelected = viewModel::onGraphLinkSelected,
-            onOpenScanDetail = viewModel::openScanDetail,
             modifier =
                 Modifier
                     .fillMaxSize()
