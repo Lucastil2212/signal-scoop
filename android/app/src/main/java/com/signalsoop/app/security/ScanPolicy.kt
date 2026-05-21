@@ -20,7 +20,7 @@ object ScanPolicy {
         "Live results clear when you leave the app; saved History stays in on-device storage only.",
         "GPS fixes use the phone’s native location stack — never sent off-device.",
         "We do not connect to, pair with, or attack nearby devices.",
-        "Screenshots and recent-apps preview are blocked on the results screen.",
+        "Release builds block screenshots and recents preview; debug builds allow screenshots for development.",
         "Connect mesh: LAN-only peers, E2EE text, rate/size limits; radio stops when the app backgrounds.",
         "Mesh device ID stored in encrypted prefs; graph WebView cannot load external URLs.",
     )

@@ -74,7 +74,7 @@ Use text from [STORE_LISTING.md](STORE_LISTING.md).
 | Feature graphic | 1024×500 PNG |
 | Phone screenshots | At least 2, min 320px short side |
 
-Capture screenshots from the app on a real device (Scan tab with **Scan nearby signals** at top, findings + graph preview, **Graph → Scans** with insights card, **Graph → Map** full screen, scan detail sheet, privacy card).
+Capture screenshots from a **debug** build on a real device (release builds set `FLAG_SECURE`). Scan tab with **Scan nearby signals** at top, findings + graph preview, **Graph → Scans** with insights card, **Graph → Map** full screen, scan detail sheet, privacy card.
 
 ### 6. App content (compliance)
 

@@ -179,7 +179,7 @@ See **[SECURITY.md](SECURITY.md)** and in-app **Privacy & security**.
 | Local history | Room DB; rename/delete scans; backup disabled |
 | Map tiles | HTTPS to Carto basemap only; no scan data in tile requests |
 | User consent | Scan only after permissions + tap |
-| Screen capture | `FLAG_SECURE` on sensitive screens |
+| Screen capture | `FLAG_SECURE` in release; off in debug |
 | Release | R8 minify + shrink; verbose logs stripped |
 
 ## Safety & limitations

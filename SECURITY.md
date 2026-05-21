@@ -63,7 +63,7 @@ Release builds block cleartext except as configured in `networkSecurityConfig`.
 
 - Rename or delete scans from **Graph → Scans**.
 - **Backup / cloud transfer:** Disabled (`allowBackup=false`).
-- **Screenshots:** `FLAG_SECURE` on sensitive screens.
+- **Screenshots:** `FLAG_SECURE` in release builds (disabled in debug for store assets and development).
 - **Logging:** Release builds strip verbose logs; scan payloads are not written to logcat in release.
 
 ## Reporting vulnerabilities
