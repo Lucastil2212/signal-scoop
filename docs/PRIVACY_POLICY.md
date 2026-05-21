@@ -3,7 +3,7 @@
 **Last updated:** May 20, 2026  
 **Publisher:** Manticore Technologies, LLC  
 **App:** Signal Scoop (`com.signalsoop.app`)  
-**Contact:** Replace with your support email before publishing (e.g. `support@manticoretechnologies.com`).
+**Contact:** lucas@manticore.email
 
 ## Summary
 
@@ -57,7 +57,7 @@ We may update this policy; the “Last updated” date will change.
 
 ## Contact
 
-**REPLACE_WITH_YOUR_EMAIL**
+**lucas@manticore.email**
 
 ---
 

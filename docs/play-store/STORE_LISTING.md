@@ -56,7 +56,7 @@ Manticore Technologies, LLC
 
 ## Contact email
 
-YOUR_EMAIL@example.com
+lucas@manticore.email
 
 ## Website (optional)
 
