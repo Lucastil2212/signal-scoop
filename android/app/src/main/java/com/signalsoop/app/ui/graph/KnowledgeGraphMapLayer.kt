@@ -59,11 +59,14 @@ fun KnowledgeGraphMapLayer(
     val highlightedScanNodeId =
         remember(filterScanId) { filterScanId?.let { KnowledgeGraphBuilder.scanNodeId(it) } }
     val geoNodes =
-        remember(slice) {
-            slice.nodes
-                .filter { it.lat != null && it.lon != null }
-                .sortedBy { mapDrawOrder(it) }
+        remember(slice, visualization.signalCoordsByScan, filterScanId) {
+            slice.nodes.mapNotNull { node ->
+                resolveNodeLatLon(node, filterScanId, visualization.signalCoordsByScan)?.let { coords ->
+                    node.copy(lat = coords.first, lon = coords.second)
+                }
+            }.sortedBy { mapDrawOrder(it) }
         }
+    val geoNodeById = remember(geoNodes) { geoNodes.associateBy { it.id } }
 
     DisposableEffect(Unit) {
         Configuration.getInstance().userAgentValue = context.packageName
@@ -97,7 +100,7 @@ fun KnowledgeGraphMapLayer(
         factory = { mapView },
         update = { map ->
             map.overlays.clear()
-            val nodeById = slice.nodes.associateBy { it.id }
+            val nodeById = geoNodeById
             val focused = filterScanId != null
 
             slice.links.forEach { link ->
@@ -105,16 +108,24 @@ fun KnowledgeGraphMapLayer(
             }
 
             geoNodes.forEach { node ->
+                val nodeLatLon =
+                    resolveNodeLatLon(
+                        node = node,
+                        filterScanId = filterScanId,
+                        signalCoordsByScan = visualization.signalCoordsByScan,
+                    ) ?: return@forEach
                 val alpha =
                     GraphColorPalette.alphaForEpoch(
                         node.epochMs,
                         visualization.timeMinMs,
                         visualization.timeMaxMs,
-                        focused || filterScanId == node.linkedScanId,
+                        focused ||
+                            (filterScanId != null &&
+                                (filterScanId == node.linkedScanId || filterScanId in node.observedInScanIds)),
                     )
                 val selectedScan = node.id == highlightedScanNodeId
                 val marker = Marker(map)
-                marker.position = GeoPoint(node.lat!!, node.lon!!)
+                marker.position = GeoPoint(nodeLatLon.first, nodeLatLon.second)
                 marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 marker.icon =
                     circleDrawable(
@@ -178,6 +189,19 @@ private fun drawLink(
         true
     }
     map.overlays.add(line)
+}
+
+private fun resolveNodeLatLon(
+    node: GraphVisNode,
+    filterScanId: String?,
+    signalCoordsByScan: Map<String, Map<String, Pair<Double, Double>>>,
+): Pair<Double, Double>? {
+    if (filterScanId != null) {
+        signalCoordsByScan[filterScanId]?.get(node.id)?.let { return it }
+    }
+    val lat = node.lat ?: return null
+    val lon = node.lon ?: return null
+    return Pair(lat, lon)
 }
 
 /** Lower sorts first; later markers paint on top (sensors/NFC stay visible). */

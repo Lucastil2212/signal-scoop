@@ -44,13 +44,7 @@ class ScanHistoryRepository(
                 sessionContext = sessionContext,
             )
 
-        val priorCounts = priorSignalObservationCounts(excludeScanId = null)
-        val delta = KnowledgeGraphBuilder.buildForScan(snapshot, priorCounts)
-
         dao.upsertScan(snapshot.toEntity())
-        if (delta.nodes.isNotEmpty()) dao.upsertNodes(delta.nodes)
-        if (delta.edges.isNotEmpty()) dao.upsertEdges(delta.edges)
-        dao.pruneOrphanNodes()
 
         return snapshot
     }
@@ -157,6 +151,10 @@ class ScanHistoryRepository(
         ensureGraphMaterialized()
         val scans = dao.getAllScans()
         val edges = dao.getAllEdges()
+        val scanFindingsById =
+            scans.associate { entity ->
+                entity.id to ScanSnapshotCodec.decodeFindings(entity.findingsJson)
+            }
         return GraphVisualizationBuilder.build(
             nodes = dao.getAllNodes(),
             edges = edges,
@@ -166,6 +164,7 @@ class ScanHistoryRepository(
             scanGpsById = scanGpsById(),
             scanEpochById = scans.associate { it.id to it.scannedAtEpochMs },
             scanLabelsById = scans.associate { it.id to it.name },
+            scanFindingsById = scanFindingsById,
         )
     }
 

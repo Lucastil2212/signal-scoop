@@ -118,7 +118,7 @@ object GraphColorPalette {
             KnowledgeGraphBuilder.REL_OBSERVED ->
                 "This signal was detected during the linked scan session."
             KnowledgeGraphBuilder.REL_REPEAT ->
-                "This signal appeared in more than one scan (recurring)."
+                "This signal was seen in a prior scan and appeared again in this session."
             "USER_NOTE" -> "A note you added to the graph."
             "DEVICE_LINK" -> "A device you linked to this signal locally."
             else -> "Relationship in your local knowledge graph."

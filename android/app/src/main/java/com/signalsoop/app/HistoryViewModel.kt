@@ -67,7 +67,12 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     init {
         viewModelScope.launch {
             repository.snapshots.collect { list ->
+                val previousLatestId = _uiState.value.snapshots.firstOrNull()?.id
+                val newLatestId = list.firstOrNull()?.id
                 _uiState.update { it.copy(snapshots = list) }
+                if (newLatestId != null && previousLatestId != null && newLatestId != previousLatestId) {
+                    refreshGraphAndInsights(selectLatestScan = true)
+                }
             }
         }
         refreshGraphAndInsights()
@@ -78,18 +83,28 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun refreshGraphAndInsights() {
+    fun refreshGraphAndInsights(selectLatestScan: Boolean = false) {
         viewModelScope.launch {
             runCatching {
                 repository.rebuildKnowledgeGraphFromHistory()
                 val insights = repository.buildInsights()
                 val visualization = repository.buildVisualization()
                 val edges = repository.graphEdges()
+                val latestScanId =
+                    if (selectLatestScan) {
+                        visualization.timelineScans.maxByOrNull { it.epochMs }?.scanId
+                    } else {
+                        null
+                    }
                 _uiState.update {
                     it.copy(
                         insights = insights,
                         graphVisualization = visualization,
                         graphEdges = edges,
+                        graphFilterScanId = latestScanId ?: it.graphFilterScanId,
+                        selectedGraphNode =
+                            latestScanId?.let { id -> KnowledgeGraphBuilder.scanNodeId(id) }
+                                ?: it.selectedGraphNode,
                         statusMessage = "Your knowledge graph stays on this device.",
                     )
                 }

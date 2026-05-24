@@ -12,6 +12,8 @@ data class GraphTimelineScan(
     val color: Color,
     val signalCount: Int,
     val signalSummary: String = "",
+    /** Every graph signal node from this scan's saved findings (full spectrum). */
+    val signalNodeIds: Set<String> = emptySet(),
 )
 
 /** Nodes and links visible for the current timeline filter. */
@@ -31,13 +33,16 @@ object GraphTimelineFilter {
             )
         }
         val scanNodeId = KnowledgeGraphBuilder.scanNodeId(filterScanId)
-        val visible = linkedNodeIds(visualization, scanNodeId, filterScanId)
-        val scanLabel = visualization.timelineScans.find { it.scanId == filterScanId }?.label ?: "Scan"
+        val timelineScan = visualization.timelineScans.find { it.scanId == filterScanId }
+        val visible = linkedNodeIds(visualization, scanNodeId, filterScanId).toMutableSet()
+        timelineScan?.signalNodeIds?.let { visible.addAll(it) }
+        val scanLabel = timelineScan?.label ?: "Scan"
         return GraphViewSlice(
             nodes = visualization.nodes.filter { it.id in visible },
             links =
-                visualization.links.filter {
-                    it.sourceId in visible && it.targetId in visible
+                visualization.links.filter { link ->
+                    (link.sourceId in visible && link.targetId in visible) &&
+                        (link.scanId == null || link.scanId == filterScanId)
                 },
             label = scanLabel,
         )
@@ -49,19 +54,17 @@ object GraphTimelineFilter {
         filterScanId: String,
     ): Set<String> {
         val visible = mutableSetOf(scanNodeId)
-        var changed = true
-        while (changed) {
-            changed = false
-            visualization.links.forEach { link ->
-                val related =
-                    link.scanId == filterScanId ||
-                        link.sourceId == scanNodeId ||
-                        link.targetId == scanNodeId ||
-                        link.sourceId in visible ||
-                        link.targetId in visible
-                if (related) {
-                    if (visible.add(link.sourceId)) changed = true
-                    if (visible.add(link.targetId)) changed = true
+        visualization.links.forEach { link ->
+            val taggedToScan = link.scanId == filterScanId
+            val connectsScanNode = link.sourceId == scanNodeId || link.targetId == scanNodeId
+            if (!taggedToScan && !connectsScanNode) return@forEach
+            when (link.relation) {
+                KnowledgeGraphBuilder.REL_OBSERVED,
+                KnowledgeGraphBuilder.REL_AT_PLACE,
+                KnowledgeGraphBuilder.REL_REPEAT,
+                -> {
+                    visible.add(link.sourceId)
+                    visible.add(link.targetId)
                 }
             }
         }

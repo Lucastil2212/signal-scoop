@@ -128,7 +128,7 @@ object KnowledgeGraphBuilder {
             if (priorCount > 0) {
                 edges +=
                     GraphEdgeEntity(
-                        fromNodeId = signalNodeId,
+                        fromNodeId = scanNodeId,
                         toNodeId = signalNodeId,
                         relation = REL_REPEAT,
                         scanId = snapshot.id,

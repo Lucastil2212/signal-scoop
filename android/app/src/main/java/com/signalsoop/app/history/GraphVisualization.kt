@@ -22,6 +22,7 @@ data class GraphVisNode(
     val epochMs: Long? = null,
     val signalCategory: String? = null,
     val linkedScanId: String? = null,
+    val observedInScanIds: Set<String> = emptySet(),
     val timeLabel: String? = null,
 )
 
@@ -42,6 +43,8 @@ data class GraphVisualization(
     val usesGps: Boolean,
     val nodeCount: Int,
     val linkCount: Int,
+    /** Per-scan GPS offsets for signal nodes (scanId -> signalNodeId -> lat/lon). */
+    val signalCoordsByScan: Map<String, Map<String, Pair<Double, Double>>> = emptyMap(),
 ) {
     val geoNodeCount: Int = nodes.count { it.lat != null && it.lon != null }
 }
@@ -56,9 +59,11 @@ object GraphVisualizationBuilder {
         scanGpsById: Map<String, Pair<Double, Double>>,
         scanEpochById: Map<String, Long> = emptyMap(),
         scanLabelsById: Map<String, String> = emptyMap(),
+        scanFindingsById: Map<String, List<com.signalsoop.app.model.Finding>> = emptyMap(),
     ): GraphVisualization {
         val aliasByKey = aliases.associateBy { it.signalKey }
-        val coordsByNodeId = buildCoordinateIndex(nodes, edges, scanGpsById)
+        val coordIndex = buildCoordinateIndex(nodes, edges, scanGpsById, scanFindingsById)
+        val coordsByNodeId = coordIndex.global
         val visNodes = mutableListOf<GraphVisNode>()
         val visLinks = mutableListOf<GraphVisLink>()
 
@@ -117,11 +122,13 @@ object GraphVisualizationBuilder {
                 }
                 KnowledgeGraphBuilder.NODE_SIGNAL -> {
                     val category = meta?.optString("category")
-                    val obs =
-                        edges.find {
+                    val obsEdges =
+                        edges.filter {
                             it.relation == KnowledgeGraphBuilder.REL_OBSERVED && it.toNodeId == node.id
                         }
-                    val scanId = obs?.scanId
+                    val observedInScanIds =
+                        obsEdges.mapNotNull { edge -> edge.scanId ?: scanIdFromNode(edge.fromNodeId) }.toSet()
+                    val scanId = observedInScanIds.maxByOrNull { scanEpochById[it] ?: 0L }
                     val epoch = scanId?.let { scanEpochById[it] }
                     val rssi = meta?.optInt("rssi")?.takeIf { it != 0 }
                     val detail = meta?.optString("detail")?.takeIf { it.isNotBlank() }
@@ -147,6 +154,7 @@ object GraphVisualizationBuilder {
                             epochMs = epoch,
                             signalCategory = category,
                             linkedScanId = scanId,
+                            observedInScanIds = observedInScanIds,
                             timeLabel = subtitle.ifBlank { epoch?.let { formatTime(it) } },
                         )
                 }
@@ -253,6 +261,11 @@ object GraphVisualizationBuilder {
             sortedScanIds.map { scanId ->
                 val nodeId = KnowledgeGraphBuilder.scanNodeId(scanId)
                 val node = visNodes.find { it.id == nodeId }
+                val findings = scanFindingsById[scanId].orEmpty()
+                val signalNodeIdsFromFindings =
+                    KnowledgeGraphBuilder.signalKeysFrom(findings).keys
+                        .map { key -> "signal:$key" }
+                        .toSet()
                 GraphTimelineScan(
                     scanId = scanId,
                     scanNodeId = nodeId,
@@ -261,8 +274,9 @@ object GraphVisualizationBuilder {
                     lat = node?.lat ?: scanGpsById[scanId]?.first,
                     lon = node?.lon ?: scanGpsById[scanId]?.second,
                     color = node?.color ?: GraphColorPalette.scanColor(0, 1),
-                    signalCount = signalsPerScan[scanId] ?: 0,
-                    signalSummary = signalSummaryForScan(scanId, nodes, edges),
+                    signalCount = maxOf(signalsPerScan[scanId] ?: 0, signalNodeIdsFromFindings.size),
+                    signalSummary = signalSummaryForScan(scanId, nodes, edges, findings),
+                    signalNodeIds = signalNodeIdsFromFindings,
                 )
             }
 
@@ -275,8 +289,12 @@ object GraphVisualizationBuilder {
             usesGps = usesGps,
             nodeCount = visNodes.size,
             linkCount = visLinks.size,
+            signalCoordsByScan = coordIndex.byScan,
         )
     }
+
+    private fun scanIdFromNode(nodeId: String): String? =
+        if (nodeId.startsWith("scan:")) nodeId.removePrefix("scan:") else null
 
     private fun linkedScanEpoch(
         placeNodeId: String,
@@ -329,9 +347,9 @@ object GraphVisualizationBuilder {
                             }
                         }
                     if (parent != null && parent.lat != null && parent.lon != null) {
-                        val angle = i * 2.399963
-                        lat = parent.lat!! + cos(angle) * 0.00015
-                        lon = parent.lon!! + sin(angle) * 0.00015
+                        val scatter = signalScatterOffset(n.signalCategory.orEmpty(), i, n.id)
+                        lat = parent.lat!! + scatter.first
+                        lon = parent.lon!! + scatter.second
                     }
                 }
                 if (lat != null && lon != null) {
@@ -340,10 +358,10 @@ object GraphVisualizationBuilder {
                     nodes[i] = n.copy(layoutX = lx, layoutY = ly, lat = lat, lon = lon)
                 }
             }
-            runForceLayout(nodes, links, strength = 0.25f, iterations = 30)
+            runForceLayout(nodes, links, strength = 0.18f, iterations = 24)
             return true
         }
-        runForceLayout(nodes, links, strength = 1f, iterations = 80)
+        runForceLayout(nodes, links, strength = 0.85f, iterations = 70)
         return false
     }
 
@@ -398,12 +416,36 @@ object GraphVisualizationBuilder {
         iterations: Int,
     ) {
         if (nodes.isEmpty()) return
-        val positions =
-            nodes.mapIndexed { index, _ ->
-                val angle = (index.toFloat() / nodes.size) * (Math.PI * 2).toFloat()
-                floatArrayOf(cos(angle) * 0.85f, sin(angle) * 0.85f)
-            }.toMutableList()
         val indexById = nodes.mapIndexed { i, n -> n.id to i }.toMap()
+        val positions =
+            nodes.mapIndexed { index, node ->
+                when {
+                    node.layoutX != 0f || node.layoutY != 0f ->
+                        floatArrayOf(node.layoutX, node.layoutY)
+                    node.type == KnowledgeGraphBuilder.NODE_SCAN ->
+                        floatArrayOf(0f, 0f)
+                    else -> {
+                        val angle = (index.toFloat() / nodes.size.coerceAtLeast(1)) * (Math.PI * 2).toFloat()
+                        val radius = layoutLinkRestLength(node.id, node.signalCategory)
+                        floatArrayOf(cos(angle) * radius, sin(angle) * radius)
+                    }
+                }
+            }.toMutableList()
+
+        // Second pass: anchor observed signals relative to their scan once scan positions exist.
+        nodes.indices.forEach { i ->
+            val node = nodes[i]
+            if (node.type != KnowledgeGraphBuilder.NODE_SIGNAL) return@forEach
+            if (positions[i][0] != 0f || positions[i][1] != 0f) return@forEach
+            val parentLink =
+                links.firstOrNull { link ->
+                    link.relation == KnowledgeGraphBuilder.REL_OBSERVED && link.targetId == node.id
+                } ?: return@forEach
+            val parentIdx = indexById[parentLink.sourceId] ?: return@forEach
+            val scatter = layoutScatterForSignal(node, i)
+            positions[i][0] = positions[parentIdx][0] + scatter.first
+            positions[i][1] = positions[parentIdx][1] + scatter.second
+        }
 
         repeat(iterations) {
             val vx = FloatArray(nodes.size)
@@ -425,7 +467,17 @@ object GraphVisualizationBuilder {
                 val bi = indexById[link.targetId] ?: return@forEach
                 val dx = positions[bi][0] - positions[ai][0]
                 val dy = positions[bi][1] - positions[ai][1]
-                val pull = 0.04f * strength
+                val dist = maxOf(kotlin.math.sqrt(dx * dx + dy * dy), 0.02f)
+                val target =
+                    when (link.relation) {
+                        KnowledgeGraphBuilder.REL_OBSERVED ->
+                            layoutLinkRestLength(nodes[bi].id, nodes[bi].signalCategory)
+                        KnowledgeGraphBuilder.REL_AT_PLACE -> 0.42f * strength
+                        KnowledgeGraphBuilder.REL_REPEAT -> 0.28f * strength
+                        else -> 0.35f * strength
+                    }
+                val delta = (dist - target) / dist
+                val pull = 0.05f * strength * delta
                 vx[ai] += dx * pull
                 vy[ai] += dy * pull
                 vx[bi] -= dx * pull
@@ -443,12 +495,86 @@ object GraphVisualizationBuilder {
         }
     }
 
+    /** Canvas-space offset from scan parent — varied length, stable per signal id. */
+    private fun layoutScatterForSignal(node: GraphVisNode, index: Int): Pair<Float, Float> {
+        val hash = node.id.hashCode().toUInt()
+        val golden = 2.399963f
+        val categoryBias =
+            when (node.signalCategory?.uppercase()) {
+                "SENSORS" -> 0.4f
+                "NFC" -> 0.9f
+                "BLUETOOTH" -> 1.4f
+                "WIFI" -> 1.9f
+                "BLE" -> 2.4f
+                else -> 0.7f
+            }
+        val angle = categoryBias + index * golden + (hash % 4096u).toFloat() / 900f
+        val radius = layoutLinkRestLength(node.id, node.signalCategory)
+        return Pair(radius * cos(angle), radius * sin(angle))
+    }
+
+    private fun layoutLinkRestLength(nodeId: String, category: String?): Float {
+        val hash = nodeId.hashCode().toUInt()
+        val base =
+            when (category?.uppercase()) {
+                "SENSORS" -> 0.24f
+                "NFC" -> 0.30f
+                "BLUETOOTH" -> 0.36f
+                "WIFI" -> 0.42f
+                "BLE" -> 0.48f
+                else -> 0.34f
+            }
+        val jitter = ((hash shr 7) % 900u).toFloat() / 900f * 0.28f
+        val tier = ((hash shr 16) % 4u).toFloat() * 0.06f
+        return (base + jitter + tier).coerceIn(0.18f, 0.82f)
+    }
+
+    /** Map offset from scan GPS — golden-angle spiral with per-signal radius jitter. */
+    private fun signalScatterOffset(category: String, index: Int, seed: String): Pair<Double, Double> {
+        val hash = seed.hashCode().toUInt()
+        val golden = 2.399963229728653
+        val categoryBand =
+            when (category.uppercase()) {
+                "SENSORS" -> 0.0
+                "NFC" -> 0.85
+                "BLUETOOTH" -> 1.7
+                "WIFI" -> 2.55
+                "BLE" -> 3.4
+                else -> 0.45
+            }
+        val baseRadius =
+            when (category.uppercase()) {
+                "SENSORS" -> 0.00034
+                "NFC" -> 0.00024
+                "BLUETOOTH" -> 0.00020
+                "WIFI" -> 0.00018
+                "BLE" -> 0.00015
+                else -> 0.00019
+            }
+        val spiralIndex = categoryBand + index * 0.61
+        val angle = spiralIndex * golden + (hash % 4096u).toDouble() / 620.0
+        val radiusScale =
+            1.0 +
+                (index % 5) * 0.18 +
+                ((hash shr 8) % 1000u).toDouble() / 1400.0 +
+                ((hash shr 20) % 4u).toDouble() * 0.11
+        val radius = baseRadius * radiusScale
+        return Pair(radius * cos(angle), radius * sin(angle))
+    }
+
+    private data class CoordinateIndex(
+        val global: Map<String, Pair<Double, Double>>,
+        val byScan: Map<String, Map<String, Pair<Double, Double>>>,
+    )
+
     private fun buildCoordinateIndex(
         nodes: List<GraphNodeEntity>,
         edges: List<GraphEdgeEntity>,
         scanGpsById: Map<String, Pair<Double, Double>>,
-    ): Map<String, Pair<Double, Double>> {
+        scanFindingsById: Map<String, List<com.signalsoop.app.model.Finding>> = emptyMap(),
+    ): CoordinateIndex {
         val coords = mutableMapOf<String, Pair<Double, Double>>()
+        val byScan = mutableMapOf<String, MutableMap<String, Pair<Double, Double>>>()
         scanGpsById.forEach { (scanId, coord) ->
             coords[KnowledgeGraphBuilder.scanNodeId(scanId)] = coord
         }
@@ -467,57 +593,55 @@ object GraphVisualizationBuilder {
         val nodeById = nodes.associateBy { it.id }
         val observedByScan =
             edges
-                .filter { it.relation == KnowledgeGraphBuilder.REL_OBSERVED }
-                .groupBy { it.scanId }
-        observedByScan.forEach { (_, scanEdges) ->
+                .filter { it.relation == KnowledgeGraphBuilder.REL_OBSERVED && it.scanId != null }
+                .groupBy { it.scanId!! }
+        observedByScan.forEach { (scanId, scanEdges) ->
+            val scanNodeId = KnowledgeGraphBuilder.scanNodeId(scanId)
+            val scanCoord = coords[scanNodeId] ?: scanGpsById[scanId] ?: return@forEach
+            val perScan = byScan.getOrPut(scanId) { mutableMapOf() }
             val counters = mutableMapOf<String, Int>()
             scanEdges.forEach { edge ->
-                val scanCoord = coords[edge.fromNodeId] ?: return@forEach
-                if (coords[edge.toNodeId] != null) return@forEach
                 val category =
                     nodeById[edge.toNodeId]?.metadataJson?.let { meta ->
                         runCatching { org.json.JSONObject(meta).optString("category") }.getOrNull()
                     }.orEmpty()
                 val idx = counters.getOrDefault(category, 0)
                 counters[category] = idx + 1
-                val offset = signalOffsetDegrees(category, idx)
-                coords[edge.toNodeId] =
-                    Pair(scanCoord.first + offset.first, scanCoord.second + offset.second)
+                val offset = signalScatterOffset(category, idx, edge.toNodeId)
+                val placed = Pair(scanCoord.first + offset.first, scanCoord.second + offset.second)
+                perScan[edge.toNodeId] = placed
+                coords[edge.toNodeId] = placed
             }
         }
-        return coords
-    }
-
-    private fun signalOffsetDegrees(category: String, index: Int): Pair<Double, Double> {
-        val baseAngle =
-            when (category.uppercase()) {
-                "SENSORS" -> 0.0
-                "NFC" -> 1.2
-                "BLUETOOTH" -> 2.4
-                "WIFI" -> 3.6
-                "BLE" -> 4.8
-                else -> 0.6
+        scanFindingsById.forEach { (scanId, findings) ->
+            val scanNodeId = KnowledgeGraphBuilder.scanNodeId(scanId)
+            val scanCoord = coords[scanNodeId] ?: scanGpsById[scanId] ?: return@forEach
+            val perScan = byScan.getOrPut(scanId) { mutableMapOf() }
+            val counters = mutableMapOf<String, Int>()
+            KnowledgeGraphBuilder.signalKeysFrom(findings).forEach { (_, finding) ->
+                val signalKey = KnowledgeGraphBuilder.graphSignalKeyFrom(finding) ?: return@forEach
+                val nodeId = "signal:$signalKey"
+                if (perScan.containsKey(nodeId)) return@forEach
+                val category = finding.category.name
+                val idx = counters.getOrDefault(category, 0)
+                counters[category] = idx + 1
+                val offset = signalScatterOffset(category, idx, nodeId)
+                val placed = Pair(scanCoord.first + offset.first, scanCoord.second + offset.second)
+                perScan[nodeId] = placed
+                coords[nodeId] = placed
             }
-        val radius =
-            when (category.uppercase()) {
-                "SENSORS" -> 0.00042
-                "NFC" -> 0.00028
-                "BLUETOOTH" -> 0.00024
-                "WIFI" -> 0.00020
-                "BLE" -> 0.00018
-                else -> 0.00022
-            }
-        val angle = baseAngle + index * 0.35
-        return Pair(radius * kotlin.math.cos(angle), radius * kotlin.math.sin(angle))
+        }
+        return CoordinateIndex(global = coords, byScan = byScan)
     }
 
     private fun signalSummaryForScan(
         scanId: String,
         nodes: List<GraphNodeEntity>,
         edges: List<GraphEdgeEntity>,
+        findings: List<com.signalsoop.app.model.Finding> = emptyList(),
     ): String {
         val nodeById = nodes.associateBy { it.id }
-        val categories =
+        val categoriesFromEdges =
             edges
                 .filter { it.relation == KnowledgeGraphBuilder.REL_OBSERVED && it.scanId == scanId }
                 .mapNotNull { edge ->
@@ -525,6 +649,10 @@ object GraphVisualizationBuilder {
                         runCatching { org.json.JSONObject(meta).optString("category") }.getOrNull()
                     }
                 }
+        val categoriesFromFindings =
+            KnowledgeGraphBuilder.signalKeysFrom(findings).values.map { it.category.name }
+        val categories =
+            if (categoriesFromFindings.isNotEmpty()) categoriesFromFindings else categoriesFromEdges
         if (categories.isEmpty()) return "0 signals"
         return buildList {
             categories.groupingBy { it }.eachCount().forEach { (cat, count) ->
@@ -547,8 +675,10 @@ object GraphVisualizationBuilder {
     }
 
     private fun offsetDegrees(seed: Int, metersApprox: Double): Pair<Double, Double> {
-        val angle = seed * 2.399963f
-        return Pair(metersApprox * cos(angle), metersApprox * sin(angle))
+        val hash = seed.toUInt()
+        val angle = seed * 2.399963 + (hash % 2048u).toDouble() / 400.0
+        val radius = metersApprox * (0.75 + (hash % 1000u).toDouble() / 2000.0)
+        return Pair(radius * cos(angle), radius * sin(angle))
     }
 
     private fun signalKeyFromNodeId(nodeId: String): String? =

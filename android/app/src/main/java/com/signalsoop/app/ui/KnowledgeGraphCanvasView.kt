@@ -196,7 +196,9 @@ fun KnowledgeGraphCanvasView(
                         node.epochMs,
                         visualization.timeMinMs,
                         visualization.timeMaxMs,
-                        focused || filterScanId == node.linkedScanId,
+                        focused ||
+                            (filterScanId != null &&
+                                (filterScanId == node.linkedScanId || filterScanId in node.observedInScanIds)),
                     )
                 val fill = node.color.copy(alpha = alpha)
                 drawCircle(color = fill.copy(alpha = alpha * 0.35f), radius = r + 8f, center = p)
